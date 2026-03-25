@@ -1,86 +1,256 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbletea"
+	"fmt"
+	"strings"
+
 	"github.com/charmbracelet/lipgloss"
 	"taskctl/core"
 )
 
-var (
-	cursorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("212"))
-	helpStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Faint(true)
-	statusStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("86"))  // running
-	blockedStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("226")) // blocked
-	suspendedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241")) // suspended
-	doneStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("114")) // terminated
-)
-
-// Update handles messages and updates the model
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "ctrl+c":
-			m.Quitting = true
-			return m, tea.Quit
-		case "up", "k":
-			if m.Selected > 0 {
-				m.Selected--
-			}
-		case "down", "j":
-			if m.Selected < len(m.Processes)-1 {
-				m.Selected++
-			}
-		}
-	}
-	return m, nil
-}
-
 // View renders the TUI
 func (m Model) View() string {
-	if m.Quitting {
+	if m.quitting {
 		return "Goodbye!\n"
 	}
 
-	s := "Process List\n\n"
+	if m.err != nil {
+		return m.errorView()
+	}
 
-	for i, process := range m.Processes {
-		cursor := " "
-		if m.Selected == i {
-			cursor = ">"
+	if m.viewMode == ViewList {
+		return m.listView()
+	}
+	return m.detailView()
+}
+
+func (m Model) listView() string {
+	var b strings.Builder
+
+	// Header
+	b.WriteString(titleStyle.Render(" taskctl - Process Manager ") + "\n")
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
+
+	// Process list
+	if len(m.processes) == 0 {
+		b.WriteString(helpStyle.Render("No processes found. Press 's' to spawn one.") + "\n")
+	} else {
+		// Calculate visible items based on viewport
+		visibleCount := len(m.processes) - m.viewportOffset
+		if visibleCount > 15 {
+			visibleCount = 15
 		}
 
-		// Style based on status
-		var statusStyle lipgloss.Style
-		var statusIcon string
-		switch process.Status {
-		case core.StatusRunning:
-			statusStyle = statusStyle
-			statusIcon = "▶"
-		case core.StatusBlocked:
-			statusStyle = blockedStyle
-			statusIcon = "⏸"
-		case core.StatusSuspended:
-			statusStyle = suspendedStyle
-			statusIcon = "⏹"
-		case core.StatusTerminated:
-			statusStyle = doneStyle
-			statusIcon = "✓"
-		default:
-			statusStyle = helpStyle
-			statusIcon = "?"
-		}
-
-		line := cursorStyle.Render(cursor) + " " +
-			statusStyle.Render(statusIcon) + " " +
-			process.Title
-		s += line + "\n"
-
-		if m.Selected == i && process.Description != "" {
-			s += helpStyle.Render("    └─ "+process.Description) + "\n"
+		for i := 0; i < visibleCount; i++ {
+			idx := m.viewportOffset + i
+			if idx >= len(m.processes) {
+				break
+			}
+			process := m.processes[idx]
+			b.WriteString(m.renderProcessItem(idx, process))
 		}
 	}
 
-	s += "\n" + helpStyle.Render("Press q to quit")
-	return s
+	b.WriteString("\n")
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+
+	// Status bar
+	b.WriteString(m.renderStatusBar())
+
+	return b.String()
+}
+
+func (m Model) renderProcessItem(idx int, process core.Process) string {
+	cursor := " "
+	if idx == m.cursor {
+		cursor = "►"
+	}
+
+	// Status icon and style
+	var statusStyle lipgloss.Style
+	var statusIcon string
+	switch process.Status {
+	case core.StatusRunning:
+		statusStyle = statusStyle
+		statusIcon = "▶"
+	case core.StatusBlocked:
+		statusStyle = blockedStyle
+		statusIcon = "⏸"
+	case core.StatusSuspended:
+		statusStyle = suspendedStyle
+		statusIcon = "⏹"
+	case core.StatusTerminated:
+		statusStyle = doneStyle
+		statusIcon = "✓"
+	default:
+		statusStyle = helpStyle
+		statusIcon = "?"
+	}
+
+	// Priority icon
+	var priorityStyle lipgloss.Style
+	var priorityIcon string
+	switch process.Priority {
+	case core.PriorityHigh:
+		priorityStyle = priorityHighStyle
+		priorityIcon = "H"
+	case core.PriorityMedium:
+		priorityStyle = priorityMediumStyle
+		priorityIcon = "M"
+	case core.PriorityLow:
+		priorityStyle = priorityLowStyle
+		priorityIcon = "L"
+	default:
+		priorityStyle = helpStyle
+		priorityIcon = "?"
+	}
+
+	// Build the line
+	line := fmt.Sprintf("%s [%s] [%s] %s",
+		cursorStyle.Render(cursor),
+		statusStyle.Render(statusIcon),
+		priorityStyle.Render(priorityIcon),
+		process.Title,
+	)
+
+	if idx == m.cursor && process.Description != "" {
+		// Truncate description if too long
+		desc := process.Description
+		if len(desc) > 40 {
+			desc = desc[:37] + "..."
+		}
+		line += "\n" + helpStyle.Render("    └─ "+desc)
+	}
+
+	return line + "\n"
+}
+
+func (m Model) renderStatusBar() string {
+	return helpStyle.Render(" j/k:导航  enter:详情  s:新建  q:退出  ?:帮助")
+}
+
+func (m Model) detailView() string {
+	if m.currentProcess == nil {
+		return "Loading..."
+	}
+
+	var b strings.Builder
+
+	// Header
+	b.WriteString(titleStyle.Render(fmt.Sprintf(" Process #%d: %s ", m.currentProcess.ID, m.currentProcess.Title)) + "\n")
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
+
+	// Process info
+	b.WriteString(fmt.Sprintf("Status:    %s %s\n",
+		m.getStatusStyle(m.currentProcess.Status).Render(m.getStatusIcon(m.currentProcess.Status)),
+		m.currentProcess.Status))
+
+	b.WriteString(fmt.Sprintf("Priority:  %s %s\n",
+		m.getPriorityStyle(m.currentProcess.Priority).Render(m.getPriorityIcon(m.currentProcess.Priority)),
+		m.currentProcess.Priority))
+
+	b.WriteString(fmt.Sprintf("Created:   %s\n",
+		helpStyle.Render(m.currentProcess.CreatedAt.Format("2006-01-02 15:04"))))
+
+	b.WriteString(fmt.Sprintf("Updated:   %s\n",
+		helpStyle.Render(m.currentProcess.UpdatedAt.Format("2006-01-02 15:04"))))
+
+	if m.currentProcess.Description != "" {
+		b.WriteString("\nDescription:\n")
+		b.WriteString(helpStyle.Render("  "+m.currentProcess.Description) + "\n")
+	}
+
+	// Logs
+	b.WriteString("\n" + borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+	b.WriteString(titleStyle.Render(" Timeline ") + "\n")
+
+	if len(m.processLogs) == 0 {
+		b.WriteString(helpStyle.Render("No logs yet.") + "\n")
+	} else {
+		for _, log := range m.processLogs {
+			timestamp := log.CreatedAt.Format("15:04")
+			icon := "📝"
+			logStyle := logProgressStyle
+			if log.LogType == core.LogTypeStateChange {
+				icon = "🔄"
+				logStyle = logStateChangeStyle
+			}
+			b.WriteString(fmt.Sprintf("   [%s] %s %s\n",
+				helpStyle.Render(timestamp),
+				logStyle.Render(icon),
+				log.Content))
+		}
+	}
+
+	b.WriteString("\n" + borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+
+	// Status bar
+	b.WriteString(m.renderDetailStatusBar())
+
+	return b.String()
+}
+
+func (m Model) renderDetailStatusBar() string {
+	return helpStyle.Render(" b:block  w:wake  t:terminate  a:add log  esc:back  q:quit")
+}
+
+func (m Model) errorView() string {
+	return fmt.Sprintf("Error: %v\n\nPress q to quit", m.err)
+}
+
+// Helper methods for styling
+func (m Model) getStatusIcon(status core.ProcessStatus) string {
+	switch status {
+	case core.StatusRunning:
+		return "▶"
+	case core.StatusBlocked:
+		return "⏸"
+	case core.StatusSuspended:
+		return "⏹"
+	case core.StatusTerminated:
+		return "✓"
+	default:
+		return "?"
+	}
+}
+
+func (m Model) getStatusStyle(status core.ProcessStatus) lipgloss.Style {
+	switch status {
+	case core.StatusRunning:
+		return statusStyle
+	case core.StatusBlocked:
+		return blockedStyle
+	case core.StatusSuspended:
+		return suspendedStyle
+	case core.StatusTerminated:
+		return doneStyle
+	default:
+		return helpStyle
+	}
+}
+
+func (m Model) getPriorityIcon(priority core.ProcessPriority) string {
+	switch priority {
+	case core.PriorityHigh:
+		return "H"
+	case core.PriorityMedium:
+		return "M"
+	case core.PriorityLow:
+		return "L"
+	default:
+		return "?"
+	}
+}
+
+func (m Model) getPriorityStyle(priority core.ProcessPriority) lipgloss.Style {
+	switch priority {
+	case core.PriorityHigh:
+		return priorityHighStyle
+	case core.PriorityMedium:
+		return priorityMediumStyle
+	case core.PriorityLow:
+		return priorityLowStyle
+	default:
+		return helpStyle
+	}
 }
