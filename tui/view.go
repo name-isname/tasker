@@ -160,7 +160,7 @@ func (m Model) renderStatusBar() string {
 	} else if m.statusFilter == core.StatusTerminated {
 		filterStr = "已终止"
 	}
-	return helpStyle.Render(fmt.Sprintf(" 过滤:%s | j/k:导航  enter:详情  s:新建  r/B/S/T:过滤  /:搜索  G:时间线  D:统计  Y:树  q:退出  ?:帮助", filterStr))
+	return helpStyle.Render(fmt.Sprintf(" 过滤:%s | j/k:导航  enter:详情  s:新建  r/B/S/T:过滤  /:搜索  G:时间线  D:统计  Y:树  q:返回/退出  ?:帮助", filterStr))
 }
 
 func (m Model) detailView() string {
@@ -235,7 +235,7 @@ func (m Model) detailView() string {
 }
 
 func (m Model) renderDetailStatusBar() string {
-	return helpStyle.Render(" E:编辑进程  b:阻塞  w:唤醒  t:终止  a:添加日志  e:编辑日志  j/k:选择日志  esc:返回  q:退出")
+	return helpStyle.Render(" E:编辑进程  b:阻塞  w:唤醒  t:终止  a:添加日志  e:编辑日志  j/k:选择日志  q/esc:返回")
 }
 
 func (m Model) errorView() string {
@@ -329,7 +329,7 @@ func (m Model) helpView() string {
 	b.WriteString("  D             活动统计\n")
 	b.WriteString("  Y             进程树\n")
 	b.WriteString("  ?             显示帮助\n")
-	b.WriteString("  q/ctrl+c      退出\n\n")
+	b.WriteString("  q/ctrl+c      退出程序\n\n")
 
 	b.WriteString(titleStyle.Render("详情视图快捷键:") + "\n")
 	b.WriteString("  E             编辑进程信息 (标题/描述/优先级)\n")
@@ -339,31 +339,30 @@ func (m Model) helpView() string {
 	b.WriteString("  a             添加日志\n")
 	b.WriteString("  e             编辑选中的日志\n")
 	b.WriteString("  j/k           选择日志\n")
-	b.WriteString("  esc/h/←       返回列表\n")
-	b.WriteString("  q             退出\n\n")
+	b.WriteString("  q/esc/h/←     返回列表\n\n")
 
 	b.WriteString(titleStyle.Render("搜索视图快捷键:") + "\n")
 	b.WriteString("  j/k           导航搜索结果\n")
 	b.WriteString("  enter         跳转到进程详情\n")
 	b.WriteString("  /             新搜索\n")
-	b.WriteString("  esc/q         退出\n\n")
+	b.WriteString("  q/esc         返回列表\n\n")
 
 	b.WriteString(titleStyle.Render("时间线视图快捷键:") + "\n")
 	b.WriteString("  j/k           导航时间线\n")
 	b.WriteString("  enter         跳转到进程详情\n")
-	b.WriteString("  esc/q         退出\n\n")
+	b.WriteString("  q/esc         返回列表\n\n")
 
 	b.WriteString(titleStyle.Render("统计视图快捷键:") + "\n")
 	b.WriteString("  d             30天统计\n")
 	b.WriteString("  h/H           7天/90天统计\n")
 	b.WriteString("  D             365天统计\n")
-	b.WriteString("  esc/q         退出\n\n")
+	b.WriteString("  q/esc         返回列表\n\n")
 
 	b.WriteString(titleStyle.Render("树视图快捷键:") + "\n")
 	b.WriteString("  j/k           导航进程树\n")
 	b.WriteString("  enter         查看进程详情\n")
 	b.WriteString("  space         展开/折叠\n")
-	b.WriteString("  esc/q         退出\n\n")
+	b.WriteString("  q/esc         返回列表\n\n")
 
 	b.WriteString(titleStyle.Render("状态图标:") + "\n")
 	b.WriteString("  ▶             运行中 (running)\n")
@@ -472,7 +471,7 @@ func (m Model) searchView() string {
 	}
 
 	b.WriteString("\n" + borderStyle.Render(strings.Repeat("─", 50)) + "\n")
-	b.WriteString(helpStyle.Render(" j/k:导航  enter:查看  /:新搜索  q:退出"))
+	b.WriteString(helpStyle.Render(" j/k:导航  enter:查看  /:新搜索  q:返回"))
 
 	return b.String()
 }
@@ -530,7 +529,7 @@ func (m Model) timelineView() string {
 	}
 
 	b.WriteString("\n" + borderStyle.Render(strings.Repeat("─", 50)) + "\n")
-	b.WriteString(helpStyle.Render(" j/k:导航  enter:查看  q:退出"))
+	b.WriteString(helpStyle.Render(" j/k:导航  enter:查看  q:返回"))
 
 	return b.String()
 }
@@ -579,7 +578,7 @@ func (m Model) statsView() string {
 	}
 
 	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
-	b.WriteString(helpStyle.Render(" h:7天  d:30天  H:90天  D:365天  q:退出"))
+	b.WriteString(helpStyle.Render(" h:7天  d:30天  H:90天  D:365天  q:返回"))
 
 	return b.String()
 }
@@ -642,7 +641,7 @@ func (m Model) treeView() string {
 	}
 
 	b.WriteString("\n" + borderStyle.Render(strings.Repeat("─", 50)) + "\n")
-	b.WriteString(helpStyle.Render(" j/k:导航  enter:查看  space:展开/折叠  q:退出"))
+	b.WriteString(helpStyle.Render(" j/k:导航  enter:查看  space:展开/折叠  q:返回"))
 
 	return b.String()
 }

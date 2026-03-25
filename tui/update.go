@@ -230,7 +230,11 @@ func (m Model) handleListKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleDetailKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "q":
+		// Return to list instead of quitting
+		return m, func() tea.Msg { return BackToListMsg{} }
+
+	case "ctrl+c":
 		m.quitting = true
 		return m, tea.Quit
 
@@ -563,7 +567,12 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleSearchKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c", "esc":
+	case "q", "esc":
+		// Return to list
+		m.viewMode = ViewList
+		return m, nil
+
+	case "ctrl+c":
 		m.quitting = true
 		return m, tea.Quit
 
@@ -608,7 +617,12 @@ func (m Model) handleSearchKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleTimelineKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c", "esc":
+	case "q", "esc":
+		// Return to list
+		m.viewMode = ViewList
+		return m, nil
+
+	case "ctrl+c":
 		m.quitting = true
 		return m, tea.Quit
 
@@ -638,7 +652,12 @@ func (m Model) handleTimelineKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleStatsKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c", "esc":
+	case "q", "esc":
+		// Return to list
+		m.viewMode = ViewList
+		return m, nil
+
+	case "ctrl+c":
 		m.quitting = true
 		return m, tea.Quit
 
@@ -663,7 +682,12 @@ func (m Model) handleStatsKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleTreeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c", "esc":
+	case "q", "esc":
+		// Return to list
+		m.viewMode = ViewList
+		return m, nil
+
+	case "ctrl+c":
 		m.quitting = true
 		return m, tea.Quit
 
