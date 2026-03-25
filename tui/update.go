@@ -27,6 +27,9 @@ var (
 	// Log styles
 	logProgressStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("228")) // yellow
 	logStateChangeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("86"))  // green
+
+	// Warning style
+	warningStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true) // red bold
 )
 
 // Update handles messages and updates the model
@@ -123,6 +126,8 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleTreeKeyMsg(msg)
 	case ViewParentSelect:
 		return m.handleParentSelectKeyMsg(msg)
+	case ViewDeleteConfirm:
+		return m.handleDeleteConfirmKeyMsg(msg)
 	}
 	return m, nil
 }
@@ -231,6 +236,17 @@ func (m Model) handleListKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "Y":
 		// Process tree
 		return m, loadTree()
+
+	case "d":
+		// Delete process with confirmation
+		if len(m.processes) > 0 {
+			process := m.processes[m.cursor]
+			m.confirmDeleteType = "process"
+			m.confirmDeleteID = process.ID
+			m.confirmDeleteName = process.Title
+			m.viewMode = ViewDeleteConfirm
+		}
+		return m, nil
 	}
 
 	return m, nil
@@ -359,21 +375,19 @@ func (m Model) handleDetailKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case "d":
-		// Delete process
-		if m.currentProcess != nil {
-			return m, func() tea.Msg {
-				err := core.DeleteProcess(m.currentProcess.ID)
-				if err != nil {
-					return errMsg{err}
-				}
-				// Refresh processes and return to list
-				processes, err := core.ListProcesses(nil)
-				if err != nil {
-					return errMsg{err}
-				}
-				return ProcessesLoadedMsg{Processes: processes}
+	case "x":
+		// Delete selected log with confirmation
+		if len(m.processLogs) > 0 && m.logCursor < len(m.processLogs) {
+			log := m.processLogs[m.logCursor]
+			m.confirmDeleteType = "log"
+			m.confirmDeleteID = log.ID
+			// Truncate log content for display
+			logContent := log.Content
+			if len(logContent) > 30 {
+				logContent = logContent[:30] + "..."
 			}
+			m.confirmDeleteName = logContent
+			m.viewMode = ViewDeleteConfirm
 		}
 		return m, nil
 
@@ -1005,6 +1019,62 @@ func (m Model) handleParentSelectKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.viewMode = ViewSpawn
 		}
 		return m, nil
+	}
+	return m, nil
+}
+
+func (m Model) handleDeleteConfirmKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y", "Y":
+		// Confirm deletion
+		if m.confirmDeleteType == "process" {
+			return m, func() tea.Msg {
+				err := core.DeleteProcess(m.confirmDeleteID)
+				if err != nil {
+					return errMsg{err}
+				}
+				// Refresh processes and return to list
+				processes, err := core.ListProcesses(nil)
+				if err != nil {
+					return errMsg{err}
+				}
+				return ProcessesLoadedMsg{Processes: processes}
+			}
+		} else if m.confirmDeleteType == "log" && m.currentProcess != nil {
+			return m, func() tea.Msg {
+				err := core.DeleteLog(m.confirmDeleteID)
+				if err != nil {
+					return errMsg{err}
+				}
+				// Refresh process detail
+				logs, err := core.GetLogs(m.currentProcess.ID)
+				if err != nil {
+					return errMsg{err}
+				}
+				return ProcessDetailLoadedMsg{
+					Process: m.currentProcess,
+					Logs:    logs,
+				}
+			}
+		}
+		return m, nil
+
+	case "n", "N", "q", "esc":
+		// Cancel deletion - return to previous view
+		if m.confirmDeleteType == "process" {
+			m.viewMode = ViewList
+		} else {
+			m.viewMode = ViewDetail
+		}
+		// Clear confirmation state
+		m.confirmDeleteType = ""
+		m.confirmDeleteID = 0
+		m.confirmDeleteName = ""
+		return m, nil
+
+	case "ctrl+c":
+		m.quitting = true
+		return m, tea.Quit
 	}
 	return m, nil
 }

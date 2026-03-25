@@ -48,6 +48,9 @@ func (m Model) View() string {
 	if m.viewMode == ViewParentSelect {
 		return m.parentSelectView()
 	}
+	if m.viewMode == ViewDeleteConfirm {
+		return m.deleteConfirmView()
+	}
 	return ""
 }
 
@@ -163,7 +166,7 @@ func (m Model) renderStatusBar() string {
 	} else if m.statusFilter == core.StatusTerminated {
 		filterStr = "已终止"
 	}
-	return helpStyle.Render(fmt.Sprintf(" 过滤:%s | j/k:导航  enter:详情  s:新建  A:全部 r/B/S/T:过滤  /:搜索  G:时间线  D:统计  Y:树  q:返回/退出  ?:帮助", filterStr))
+	return helpStyle.Render(fmt.Sprintf(" 过滤:%s | j/k:导航  enter:详情  s:新建  d:删除  A:全部 r/B/S/T:过滤  /:搜索  G:时间线  D:统计  Y:树  q:返回/退出  ?:帮助", filterStr))
 }
 
 func (m Model) detailView() string {
@@ -238,7 +241,7 @@ func (m Model) detailView() string {
 }
 
 func (m Model) renderDetailStatusBar() string {
-	return helpStyle.Render(" E:编辑进程  d:删除进程  b:阻塞  p:等待  w:唤醒  t:终止  a:添加日志  e:编辑日志  j/k:选择日志  q/esc:返回")
+	return helpStyle.Render(" E:编辑进程  b:阻塞  p:等待  w:唤醒  t:终止  a:添加日志  e:编辑日志  x:删除日志  j/k:选择日志  q/esc:返回")
 }
 
 func (m Model) errorView() string {
@@ -335,6 +338,7 @@ func (m Model) helpView() string {
 		"  1-9           快速跳转到第N项",
 		"  enter         查看进程详情",
 		"  s             新建进程",
+		"  d             删除进程 (需确认)",
 		"  A             显示全部进程",
 		"  r/B/S/T       按状态过滤 (运行/阻塞/等待/终止)",
 		"  /             全文搜索",
@@ -346,13 +350,13 @@ func (m Model) helpView() string {
 		"",
 		titleStyle.Render("详情视图快捷键:"),
 		"  E             编辑进程信息 (标题/描述/优先级/父进程)",
-		"  d             删除进程",
 		"  b             阻塞进程 (⏸) - 可选备注",
 		"  p             等待中 (⏹) - 可选备注",
 		"  w             唤醒进程 (▶) - 可选备注",
 		"  t             终止进程 (✓) - 可选备注",
 		"  a             添加日志",
 		"  e             编辑选中的日志",
+		"  x             删除选中的日志 (需确认)",
 		"  j/k           选择日志",
 		"  q/esc/h/←     返回列表",
 		"",
@@ -794,6 +798,43 @@ func (m Model) parentSelectView() string {
 
 	b.WriteString("\n" + borderStyle.Render(strings.Repeat("─", 50)) + "\n")
 	b.WriteString(helpStyle.Render(" j/k:导航  enter:选择  esc:取消"))
+
+	return b.String()
+}
+
+func (m Model) deleteConfirmView() string {
+	var b strings.Builder
+
+	var title, itemType, itemName, warning string
+	if m.confirmDeleteType == "process" {
+		title = " 确认删除进程 "
+		itemType = "进程"
+		itemName = m.confirmDeleteName
+		warning = "⚠️  警告：删除进程将同时删除其所有子进程和日志！"
+	} else {
+		title = " 确认删除日志 "
+		itemType = "日志"
+		itemName = m.confirmDeleteName
+		warning = "⚠️  此操作无法撤销！"
+	}
+
+	b.WriteString(titleStyle.Render(title) + "\n")
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
+
+	b.WriteString(warningStyle.Render(warning) + "\n\n")
+	b.WriteString(fmt.Sprintf("确定要删除此%s吗？\n\n", itemType))
+
+	// Truncate name if too long
+	displayName := itemName
+	if len(displayName) > 40 {
+		displayName = displayName[:40] + "..."
+	}
+
+	b.WriteString(helpStyle.Render(fmt.Sprintf("  %s: %s\n", itemType, displayName)))
+	b.WriteString("\n")
+
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+	b.WriteString(helpStyle.Render(" y:确认删除  n/esc:取消"))
 
 	return b.String()
 }

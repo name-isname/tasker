@@ -23,6 +23,7 @@ const (
 	ViewStats
 	ViewTree
 	ViewParentSelect // For selecting parent process
+	ViewDeleteConfirm // For delete confirmation
 )
 
 // Model represents the TUI state
@@ -90,6 +91,11 @@ type Model struct {
 	treeNodes      []*core.ProcessNode
 	treeCursor     int
 	treeExpanded   map[uint]bool // Track expanded nodes
+
+	// Delete confirmation state
+	confirmDeleteType string // "process" or "log"
+	confirmDeleteID   uint   // ID of item to delete
+	confirmDeleteName string // Name/title of item to delete
 }
 
 // Messages
