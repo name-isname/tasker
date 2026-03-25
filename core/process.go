@@ -139,37 +139,3 @@ func getDescendantIDs(parentID uint, ids *[]uint) {
 		getDescendantIDs(child.ID, ids) // Recurse
 	}
 }
-
-// GetProcessTree returns a hierarchical tree of processes
-func GetProcessTree() ([]Process, error) {
-	var roots []Process
-	err := DB.Where("parent_id IS NULL").
-		Preload("Children").
-		Order("ranking DESC, created_at DESC").
-		Find(&roots).Error
-
-	if err != nil {
-		return nil, err
-	}
-
-	// Load children recursively
-	for i := range roots {
-		loadChildren(&roots[i])
-	}
-
-	return roots, nil
-}
-
-// loadChildren recursively loads children
-func loadChildren(p *Process) {
-	var children []Process
-	DB.Where("parent_id = ?", p.ID).
-		Preload("Children").
-		Order("ranking DESC, created_at DESC").
-		Find(&children)
-
-	p.Children = children
-	for i := range p.Children {
-		loadChildren(&p.Children[i])
-	}
-}

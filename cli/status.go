@@ -7,6 +7,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	statusReason string
+)
+
 var statusCmd = &cobra.Command{
 	Use:   "status <id> <new-status>",
 	Short: "Change the status of a process",
@@ -22,10 +26,16 @@ var statusCmd = &cobra.Command{
 			return fmt.Errorf("invalid status: %s (must be: running, blocked, suspended, terminated)", args[1])
 		}
 
-		if err := core.SetProcessStatus(uint(id), newStatus); err != nil {
+		// Use ChangeProcessState to atomically update status and create log
+		if err := core.ChangeProcessState(uint(id), newStatus, statusReason); err != nil {
 			return err
 		}
-		fmt.Printf("Process %d status changed to %s\n", id, newStatus)
+
+		if statusReason != "" {
+			fmt.Printf("Process %d status changed to %s (Reason: %s)\n", id, newStatus, statusReason)
+		} else {
+			fmt.Printf("Process %d status changed to %s\n", id, newStatus)
+		}
 		return nil
 	},
 }
@@ -41,4 +51,5 @@ func isValidStatus(status core.ProcessStatus) bool {
 
 func init() {
 	rootCmd.AddCommand(statusCmd)
+	statusCmd.Flags().StringVarP(&statusReason, "reason", "r", "", "Reason for status change")
 }
