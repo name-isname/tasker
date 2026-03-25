@@ -16,6 +16,7 @@ const (
 	ViewInput
 	ViewHelp
 	ViewSpawn
+	ViewEditProcess
 )
 
 // Model represents the TUI state
@@ -46,11 +47,12 @@ type Model struct {
 	inputPrompt   string
 	editingLogID  uint // 0 for new log, >0 for editing existing log
 
-	// Spawn form fields
+	// Spawn/Edit form fields (shared between spawn and edit)
 	spawnTitle       textinput.Model
 	spawnDesc        textinput.Model
 	spawnPriority    textinput.Model
 	spawnFocusedField int // 0=title, 1=desc, 2=priority
+	editingProcessID  uint // 0 for new process, >0 for editing existing process
 
 	// Log selection in detail view
 	logCursor int // Index of selected log in processLogs

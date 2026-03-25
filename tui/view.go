@@ -30,7 +30,10 @@ func (m Model) View() string {
 	if m.viewMode == ViewHelp {
 		return m.helpView()
 	}
-	return m.spawnView()
+	if m.viewMode == ViewSpawn || m.viewMode == ViewEditProcess {
+		return m.spawnView()
+	}
+	return ""
 }
 
 func (m Model) listView() string {
@@ -220,7 +223,7 @@ func (m Model) detailView() string {
 }
 
 func (m Model) renderDetailStatusBar() string {
-	return helpStyle.Render(" b:block  w:wake  t:terminate  a:add log  e:edit log  J/K:select log  esc:back  q:quit")
+	return helpStyle.Render(" E:编辑进程  b:阻塞  w:唤醒  t:终止  a:添加日志  e:编辑日志  j/k:选择日志  esc:返回  q:退出")
 }
 
 func (m Model) errorView() string {
@@ -313,12 +316,13 @@ func (m Model) helpView() string {
 	b.WriteString("  q/ctrl+c      退出\n\n")
 
 	b.WriteString(titleStyle.Render("详情视图快捷键:") + "\n")
+	b.WriteString("  E             编辑进程信息 (标题/描述/优先级)\n")
 	b.WriteString("  b             阻塞进程 (⏸)\n")
 	b.WriteString("  w             唤醒进程 (▶)\n")
 	b.WriteString("  t             终止进程 (✓)\n")
 	b.WriteString("  a             添加日志\n")
 	b.WriteString("  e             编辑选中的日志\n")
-	b.WriteString("  J/K           选择日志\n")
+	b.WriteString("  j/k           选择日志\n")
 	b.WriteString("  esc/h/←       返回列表\n")
 	b.WriteString("  q             退出\n\n")
 
@@ -342,7 +346,12 @@ func (m Model) helpView() string {
 func (m Model) spawnView() string {
 	var b strings.Builder
 
-	b.WriteString(titleStyle.Render(" 新建进程 ") + "\n")
+	// Show different title based on mode
+	title := " 新建进程 "
+	if m.editingProcessID > 0 {
+		title = " 编辑进程 "
+	}
+	b.WriteString(titleStyle.Render(title) + "\n")
 	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
 
 	// Title field
@@ -367,7 +376,11 @@ func (m Model) spawnView() string {
 	b.WriteString(priorityLabel + " " + m.spawnPriority.View() + " (H/M/L)\n\n")
 
 	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
-	b.WriteString(helpStyle.Render(" tab:切换字段  enter:创建  esc:取消"))
+	action := "创建"
+	if m.editingProcessID > 0 {
+		action = "保存"
+	}
+	b.WriteString(helpStyle.Render(fmt.Sprintf(" tab:切换字段  enter:%s  esc:取消", action)))
 
 	return b.String()
 }

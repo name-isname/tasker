@@ -82,7 +82,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleInputKeyMsg(msg)
 	case ViewHelp:
 		return m.handleHelpKeyMsg(msg)
-	case ViewSpawn:
+	case ViewSpawn, ViewEditProcess:
 		return m.handleSpawnKeyMsg(msg)
 	}
 	return m, nil
@@ -128,6 +128,7 @@ func (m Model) handleListKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.spawnPriority.SetValue("M")
 		m.spawnFocusedField = 0
 		m.spawnTitle.Focus()
+		m.editingProcessID = 0 // Ensure we're in create mode
 		m.viewMode = ViewSpawn
 		return m, nil
 
@@ -231,14 +232,30 @@ func (m Model) handleDetailKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case "J", "shift+down":
+	case "E":
+		// Edit process info
+		if m.currentProcess != nil {
+			m.spawnTitle.Reset()
+			m.spawnTitle.SetValue(m.currentProcess.Title)
+			m.spawnDesc.Reset()
+			m.spawnDesc.SetValue(m.currentProcess.Description)
+			m.spawnPriority.Reset()
+			m.spawnPriority.SetValue(string(m.currentProcess.Priority))
+			m.spawnFocusedField = 0
+			m.spawnTitle.Focus()
+			m.editingProcessID = m.currentProcess.ID
+			m.viewMode = ViewEditProcess
+		}
+		return m, nil
+
+	case "j", "down":
 		// Move cursor down in logs
 		if m.logCursor < len(m.processLogs)-1 {
 			m.logCursor++
 		}
 		return m, nil
 
-	case "K", "shift+up":
+	case "k", "up":
 		// Move cursor up in logs
 		if m.logCursor > 0 {
 			m.logCursor--
@@ -350,12 +367,28 @@ func (m Model) handleHelpKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "q":
-		// Cancel
+		// Cancel - return to appropriate view
+		if m.editingProcessID > 0 {
+			// Was editing, return to detail view
+			m.viewMode = ViewDetail
+			return m, func() tea.Msg {
+				process, err := core.GetProcess(m.editingProcessID)
+				if err != nil {
+					return errMsg{err}
+				}
+				logs, err := core.GetLogs(m.editingProcessID)
+				if err != nil {
+					return errMsg{err}
+				}
+				return ProcessDetailLoadedMsg{Process: process, Logs: logs}
+			}
+		}
+		// Was creating new, return to list view
 		m.viewMode = ViewList
 		return m, nil
 
 	case "enter":
-		// Submit and create process
+		// Submit and create/update process
 		title := m.spawnTitle.Value()
 		desc := m.spawnDesc.Value()
 		priorityStr := m.spawnPriority.Value()
@@ -374,6 +407,27 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			priority = core.PriorityMedium
 		}
 
+		if m.editingProcessID > 0 {
+			// Update existing process
+			return m, func() tea.Msg {
+				err := core.UpdateProcess(m.editingProcessID, &title, &desc, &priority)
+				if err != nil {
+					return errMsg{err}
+				}
+				// Refresh process detail
+				process, err := core.GetProcess(m.editingProcessID)
+				if err != nil {
+					return errMsg{err}
+				}
+				logs, err := core.GetLogs(m.editingProcessID)
+				if err != nil {
+					return errMsg{err}
+				}
+				return ProcessDetailLoadedMsg{Process: process, Logs: logs}
+			}
+		}
+
+		// Create new process
 		return m, func() tea.Msg {
 			_, err := core.CreateProcess(title, desc, nil, priority)
 			if err != nil {
