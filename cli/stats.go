@@ -69,5 +69,5 @@ var statsCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(statsCmd)
-	statsCmd.Flags().IntVarP(&statsDays, "days", "d", 30, "Number of days to analyze")
+	statsCmd.Flags().IntVarP(&statsDays, "days", "D", 30, "Number of days to analyze")
 }
