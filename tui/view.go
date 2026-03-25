@@ -412,12 +412,8 @@ func (m Model) helpView() string {
 	// Adjust offset if out of bounds
 	if m.helpOffset < 0 {
 		m.helpOffset = 0
-	}
-	if m.helpOffset > len(lines)-visibleLines && len(lines) > visibleLines {
+	} else if m.helpOffset > len(lines)-visibleLines && len(lines) > visibleLines {
 		m.helpOffset = len(lines) - visibleLines
-	}
-	if m.helpOffset < 0 {
-		m.helpOffset = 0
 	}
 
 	// Calculate visible range
@@ -491,12 +487,12 @@ func (m Model) spawnView() string {
 	}
 	parentStr := "无"
 	if m.selectedParentID != nil {
-		// Find parent title from available parents
-		for _, p := range m.availableParents {
-			if p.ID == *m.selectedParentID {
-				parentStr = fmt.Sprintf("#%d %s", p.ID, p.Title)
-				break
-			}
+		if m.selectedParentName != "" {
+			// Use cached name
+			parentStr = fmt.Sprintf("#%d %s", *m.selectedParentID, m.selectedParentName)
+		} else {
+			// Fallback to showing just ID if name not cached
+			parentStr = fmt.Sprintf("#%d", *m.selectedParentID)
 		}
 	}
 	b.WriteString(parentLabel + " " + helpStyle.Render(parentStr) + "\n\n")

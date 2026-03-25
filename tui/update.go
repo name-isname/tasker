@@ -169,6 +169,7 @@ func (m Model) handleListKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.spawnTitle.Focus()
 		m.editingProcessID = 0 // Ensure we're in create mode
 		m.selectedParentID = nil // Reset parent selection
+		m.selectedParentName = "" // Reset parent name
 		m.viewMode = ViewSpawn
 		return m, nil
 
@@ -351,6 +352,9 @@ func (m Model) handleDetailKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.spawnTitle.Focus()
 			m.editingProcessID = m.currentProcess.ID
 			m.selectedParentID = m.currentProcess.ParentID // Set current parent
+			// Cache parent name for display
+			m.selectedParentName = ""
+			m.availableParents = []core.Process{} // Clear stale parents
 			m.viewMode = ViewEditProcess
 		}
 		return m, nil
@@ -430,41 +434,8 @@ func getViewportHeight() int {
 func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+enter":
-		// Handle state change prompts (allow empty input)
-		if m.pendingStateChange != nil && m.currentProcess != nil {
-			note := m.textInput.Value()
-			newStatus := *m.pendingStateChange
-			return m, func() tea.Msg {
-				if err := core.ChangeProcessState(m.currentProcess.ID, newStatus, note); err != nil {
-					return errMsg{err}
-				}
-				// Refresh process detail
-				process, err := core.GetProcess(m.currentProcess.ID)
-				if err != nil {
-					return errMsg{err}
-				}
-				logs, err := core.GetLogs(m.currentProcess.ID)
-				if err != nil {
-					return errMsg{err}
-				}
-				return ProcessDetailLoadedMsg{
-					Process: process,
-					Logs:    logs,
-				}
-			}
-		}
-
-		// Check if this is search mode (single-line)
-		if m.inputPrompt == "Search" {
-			input := m.textInput.Value()
-			if input == "" {
-				return m, nil
-			}
-			return m, loadSearchResults(input)
-		}
-
-		// Log add/edit mode (multi-line) - submit on Ctrl+Enter
-		if m.currentProcess != nil {
+		// Only log add/edit uses Ctrl+Enter to submit
+		if m.currentProcess != nil && m.pendingStateChange == nil {
 			input := m.textInput.Value()
 			if input == "" {
 				return m, nil
@@ -500,12 +471,10 @@ func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-
-		// If none of the above conditions matched, return nil
 		return m, nil
 
 	case "enter":
-		// For state change and search, regular enter submits
+		// For state change: Enter submits (note is optional)
 		if m.pendingStateChange != nil && m.currentProcess != nil {
 			note := m.textInput.Value()
 			newStatus := *m.pendingStateChange
@@ -529,7 +498,7 @@ func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Check if this is search mode (single-line)
+		// For search: Enter submits
 		if m.inputPrompt == "Search" {
 			input := m.textInput.Value()
 			if input == "" {
@@ -538,8 +507,7 @@ func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, loadSearchResults(input)
 		}
 
-		// For log input, let textarea handle regular enter (newline)
-		// Update the textarea with the enter key
+		// For log input: let textarea handle Enter as newline
 		var cmd tea.Cmd
 		m.textInput, cmd = m.textInput.Update(msg)
 		return m, cmd
@@ -963,10 +931,23 @@ func (m Model) handleParentsLoaded(msg ParentsLoadedMsg) (tea.Model, tea.Cmd) {
 			if p.ID != m.editingProcessID {
 				filtered = append(filtered, p)
 			}
+			// Cache parent name if this is the selected parent
+			if m.selectedParentID != nil && p.ID == *m.selectedParentID {
+				m.selectedParentName = p.Title
+			}
 		}
 		m.availableParents = filtered
 	} else {
 		m.availableParents = msg.Parents
+		// Cache parent name for new process
+		if m.selectedParentID != nil {
+			for _, p := range msg.Parents {
+				if p.ID == *m.selectedParentID {
+					m.selectedParentName = p.Title
+					break
+				}
+			}
+		}
 	}
 
 	m.parentCursor = -1 // Start at "None" option
@@ -1009,10 +990,12 @@ func (m Model) handleParentSelectKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.parentCursor == -1 {
 			// Selected "None"
 			m.selectedParentID = nil
+			m.selectedParentName = ""
 		} else if m.parentCursor < len(m.availableParents) {
 			// Selected a parent
 			parentID := m.availableParents[m.parentCursor].ID
 			m.selectedParentID = &parentID
+			m.selectedParentName = m.availableParents[m.parentCursor].Title
 		}
 
 		// Return to spawn/edit view

@@ -65,9 +65,10 @@ type Model struct {
 	editingProcessID  uint // 0 for new process, >0 for editing existing process
 
 	// Parent process selection
-	availableParents []core.Process // List of processes that can be parents
-	parentCursor     int            // Cursor for parent selection
-	selectedParentID *uint          // Currently selected parent ID (nil = no parent)
+	availableParents   []core.Process // List of processes that can be parents
+	parentCursor       int            // Cursor for parent selection
+	selectedParentID   *uint          // Currently selected parent ID (nil = no parent)
+	selectedParentName string         // Cached parent title for display
 
 	// Log selection in detail view
 	logCursor int // Index of selected log in processLogs
