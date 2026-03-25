@@ -8,9 +8,8 @@ import (
 )
 
 var (
-	jsonOutput bool
-	psStatus   string
-	psTree     bool
+	psStatus string
+	psTree   bool
 )
 
 var psCmd = &cobra.Command{
@@ -122,7 +121,6 @@ func getPriorityIcon(priority core.ProcessPriority) string {
 
 func init() {
 	rootCmd.AddCommand(psCmd)
-	psCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	psCmd.Flags().StringVarP(&psStatus, "status", "s", "running", "Filter by status (running, blocked, suspended, terminated, all)")
 	psCmd.Flags().BoolVarP(&psTree, "tree", "t", false, "Display as hierarchical tree")
 }

@@ -6,6 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	jsonOutput bool
+)
+
 var rootCmd = &cobra.Command{
 	Use:   "taskctl",
 	Short: "A process-oriented task management tool",
@@ -14,7 +18,7 @@ var rootCmd = &cobra.Command{
 It models tasks as OS "Processes" with state transitions (running, blocked, suspended, terminated)
 rather than simple todo items. Every state change and progress note is recorded as a chronological Log.`,
 	Example: `  # Create a new process
-  taskctl spawn "Build web app" -d "Create personal website" -P high
+  taskctl spawn "Build web app" -D "Create personal website" -P high
 
   # List all running processes
   taskctl ps
@@ -41,7 +45,10 @@ rather than simple todo items. Every state change and progress note is recorded 
   taskctl timeline
 
   # Export as Markdown
-  taskctl export 1`,
+  taskctl export 1
+
+  # Output as JSON (for AI agents)
+  taskctl ps --json`,
 
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Skip DB init for help command
@@ -71,6 +78,7 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().StringP("db", "d", "./taskctl.db", "Path to the SQLite database")
+	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 
 	// Add custom help flag that works with -h
 	rootCmd.SetHelpCommand(&cobra.Command{

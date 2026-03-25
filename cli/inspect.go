@@ -110,5 +110,4 @@ func wordWrap(s string, width int) []string {
 
 func init() {
 	rootCmd.AddCommand(inspectCmd)
-	inspectCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 }

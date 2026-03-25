@@ -69,5 +69,4 @@ var logsCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(logsCmd)
 	logsCmd.Flags().IntVarP(&logsTail, "tail", "n", 0, "Show only N most recent logs")
-	logsCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 }
