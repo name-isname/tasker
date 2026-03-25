@@ -33,6 +33,18 @@ func (m Model) View() string {
 	if m.viewMode == ViewSpawn || m.viewMode == ViewEditProcess {
 		return m.spawnView()
 	}
+	if m.viewMode == ViewSearch {
+		return m.searchView()
+	}
+	if m.viewMode == ViewTimeline {
+		return m.timelineView()
+	}
+	if m.viewMode == ViewStats {
+		return m.statsView()
+	}
+	if m.viewMode == ViewTree {
+		return m.treeView()
+	}
 	return ""
 }
 
@@ -148,7 +160,7 @@ func (m Model) renderStatusBar() string {
 	} else if m.statusFilter == core.StatusTerminated {
 		filterStr = "已终止"
 	}
-	return helpStyle.Render(fmt.Sprintf(" 过滤:%s | j/k:导航  enter:详情  s:新建  r/B/S/T:过滤  q:退出  ?:帮助", filterStr))
+	return helpStyle.Render(fmt.Sprintf(" 过滤:%s | j/k:导航  enter:详情  s:新建  r/B/S/T:过滤  /:搜索  G:时间线  D:统计  Y:树  q:退出  ?:帮助", filterStr))
 }
 
 func (m Model) detailView() string {
@@ -312,6 +324,10 @@ func (m Model) helpView() string {
 	b.WriteString("  enter         查看进程详情\n")
 	b.WriteString("  s             新建进程\n")
 	b.WriteString("  r/B/S/T/A     按状态过滤 (运行/阻塞/暂停/终止/全部)\n")
+	b.WriteString("  /             全文搜索\n")
+	b.WriteString("  G             全局时间线\n")
+	b.WriteString("  D             活动统计\n")
+	b.WriteString("  Y             进程树\n")
 	b.WriteString("  ?             显示帮助\n")
 	b.WriteString("  q/ctrl+c      退出\n\n")
 
@@ -325,6 +341,29 @@ func (m Model) helpView() string {
 	b.WriteString("  j/k           选择日志\n")
 	b.WriteString("  esc/h/←       返回列表\n")
 	b.WriteString("  q             退出\n\n")
+
+	b.WriteString(titleStyle.Render("搜索视图快捷键:") + "\n")
+	b.WriteString("  j/k           导航搜索结果\n")
+	b.WriteString("  enter         跳转到进程详情\n")
+	b.WriteString("  /             新搜索\n")
+	b.WriteString("  esc/q         退出\n\n")
+
+	b.WriteString(titleStyle.Render("时间线视图快捷键:") + "\n")
+	b.WriteString("  j/k           导航时间线\n")
+	b.WriteString("  enter         跳转到进程详情\n")
+	b.WriteString("  esc/q         退出\n\n")
+
+	b.WriteString(titleStyle.Render("统计视图快捷键:") + "\n")
+	b.WriteString("  d             30天统计\n")
+	b.WriteString("  h/H           7天/90天统计\n")
+	b.WriteString("  D             365天统计\n")
+	b.WriteString("  esc/q         退出\n\n")
+
+	b.WriteString(titleStyle.Render("树视图快捷键:") + "\n")
+	b.WriteString("  j/k           导航进程树\n")
+	b.WriteString("  enter         查看进程详情\n")
+	b.WriteString("  space         展开/折叠\n")
+	b.WriteString("  esc/q         退出\n\n")
 
 	b.WriteString(titleStyle.Render("状态图标:") + "\n")
 	b.WriteString("  ▶             运行中 (running)\n")
@@ -383,4 +422,242 @@ func (m Model) spawnView() string {
 	b.WriteString(helpStyle.Render(fmt.Sprintf(" tab:切换字段  enter:%s  esc:取消", action)))
 
 	return b.String()
+}
+
+func (m Model) searchView() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render(fmt.Sprintf(" 搜索: %s ", m.searchKeyword)) + "\n")
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
+
+	if len(m.searchResults) == 0 {
+		b.WriteString(helpStyle.Render("未找到结果。") + "\n")
+	} else {
+		b.WriteString(fmt.Sprintf("找到 %d 个结果:\n\n", len(m.searchResults)))
+
+		// Show visible results
+		visibleCount := len(m.searchResults)
+		if visibleCount > 15 {
+			visibleCount = 15
+		}
+
+		for i := 0; i < visibleCount; i++ {
+			result := m.searchResults[i]
+			cursor := " "
+			if i == m.searchCursor {
+				cursor = cursorStyle.Render("►")
+			}
+
+			if result.Type == "process" {
+				b.WriteString(fmt.Sprintf("%s [进程 #%d] %s\n",
+					cursor, result.ID, result.Title))
+				if result.Content != "" {
+					preview := result.Content
+					if len(preview) > 50 {
+						preview = preview[:47] + "..."
+					}
+					b.WriteString(helpStyle.Render("    └─ "+preview) + "\n")
+				}
+			} else {
+				icon := "📝"
+				b.WriteString(fmt.Sprintf("%s [%s] 日志 #%d (进程 #%d)\n",
+					cursor, icon, result.ID, result.ProcessID))
+				content := result.Content
+				if len(content) > 50 {
+					content = content[:47] + "..."
+				}
+				b.WriteString(helpStyle.Render("    └─ "+content) + "\n")
+			}
+		}
+	}
+
+	b.WriteString("\n" + borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+	b.WriteString(helpStyle.Render(" j/k:导航  enter:查看  /:新搜索  q:退出"))
+
+	return b.String()
+}
+
+func (m Model) timelineView() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render(" 全局时间线 ") + "\n")
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
+
+	if len(m.timelineEntries) == 0 {
+		b.WriteString(helpStyle.Render("没有日志记录。") + "\n")
+	} else {
+		// Group by date
+		currentDate := ""
+		visibleCount := 0
+		maxVisible := 20
+
+		for i, entry := range m.timelineEntries {
+			if visibleCount >= maxVisible {
+				break
+			}
+
+			date := entry.CreatedAt.Format("2006-01-02")
+			if date != currentDate {
+				if currentDate != "" {
+					b.WriteString("\n")
+				}
+				b.WriteString(titleStyle.Render("📅 "+date) + "\n")
+				b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+				currentDate = date
+			}
+
+			timeStr := entry.CreatedAt.Format("15:04")
+			icon := "📝"
+			if entry.LogType == core.LogTypeStateChange {
+				icon = "🔄"
+			}
+
+			cursor := " "
+			if i == m.timelineCursor {
+				cursor = cursorStyle.Render("►")
+			}
+
+			// Truncate content if too long
+			content := entry.Content
+			if len(content) > 45 {
+				content = content[:42] + "..."
+			}
+
+			b.WriteString(fmt.Sprintf(" %s [%s] %s %s: %s\n",
+				cursor, timeStr, icon, entry.ProcessTitle, content))
+			visibleCount++
+		}
+	}
+
+	b.WriteString("\n" + borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+	b.WriteString(helpStyle.Render(" j/k:导航  enter:查看  q:退出"))
+
+	return b.String()
+}
+
+func (m Model) statsView() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render(fmt.Sprintf(" 活动统计 (过去%d天) ", m.statsDays)) + "\n")
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
+
+	if len(m.statsData) == 0 {
+		b.WriteString(helpStyle.Render("没有活动数据。") + "\n")
+	} else {
+		// Find max count for scaling
+		maxCount := 0
+		for _, stat := range m.statsData {
+			if stat.Count > maxCount {
+				maxCount = stat.Count
+			}
+		}
+
+		// Print activity chart
+		for _, stat := range m.statsData {
+			// Create a simple bar chart
+			barWidth := int(float64(stat.Count) / float64(maxCount) * 30)
+			if barWidth == 0 && stat.Count > 0 {
+				barWidth = 1
+			}
+			bar := strings.Repeat("█", barWidth)
+
+			// Format date as MM-DD
+			dateStr := stat.Date[5:] // Skip YYYY-
+
+			b.WriteString(fmt.Sprintf(" %s │%s %d\n", dateStr, bar, stat.Count))
+		}
+
+		// Calculate totals
+		totalLogs := 0
+		for _, stat := range m.statsData {
+			totalLogs += stat.Count
+		}
+		avgPerDay := float64(totalLogs) / float64(len(m.statsData))
+
+		b.WriteString("\n" + borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+		b.WriteString(fmt.Sprintf(" 总计: %d 条日志 | 平均: %.1f 条/天\n", totalLogs, avgPerDay))
+	}
+
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+	b.WriteString(helpStyle.Render(" h:7天  d:30天  H:90天  D:365天  q:退出"))
+
+	return b.String()
+}
+
+func (m Model) treeView() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render(" 进程树 ") + "\n")
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
+
+	nodes := m.flattenTreeNodes(m.treeNodes, 0)
+	if len(nodes) == 0 {
+		b.WriteString(helpStyle.Render("没有进程。") + "\n")
+	} else {
+		// Show visible nodes with viewport
+		visibleCount := len(nodes)
+		if visibleCount > 15 {
+			visibleCount = 15
+		}
+
+		for i := 0; i < visibleCount; i++ {
+			node := nodes[i]
+			cursor := " "
+			if i == m.treeCursor {
+				cursor = cursorStyle.Render("►")
+			}
+
+			// Get status icon
+			var statusIcon string
+			switch node.Status {
+			case core.StatusRunning:
+				statusIcon = "🚀"
+			case core.StatusBlocked:
+				statusIcon = "⏸"
+			case core.StatusSuspended:
+				statusIcon = "⏹"
+			case core.StatusTerminated:
+				statusIcon = "✓"
+			default:
+				statusIcon = "?"
+			}
+
+			// Calculate depth for indentation
+			depth := m.getNodeDepth(&node, m.treeNodes, 0)
+			indent := strings.Repeat("  ", depth)
+
+			// Show expand indicator if has children
+			expandIndicator := ""
+			if len(node.Children) > 0 {
+				if m.treeExpanded[node.ID] {
+					expandIndicator = "[-]"
+				} else {
+					expandIndicator = "[+]"
+				}
+			}
+
+			b.WriteString(fmt.Sprintf("%s%s [#%d] %s %s %s\n",
+				cursor, indent, node.ID, statusIcon, node.Title, expandIndicator))
+		}
+	}
+
+	b.WriteString("\n" + borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+	b.WriteString(helpStyle.Render(" j/k:导航  enter:查看  space:展开/折叠  q:退出"))
+
+	return b.String()
+}
+
+// getNodeDepth calculates the depth of a node in the tree
+func (m Model) getNodeDepth(node *core.ProcessNode, nodes []*core.ProcessNode, depth int) int {
+	for _, n := range nodes {
+		if n.ID == node.ID {
+			return depth
+		}
+		if len(n.Children) > 0 {
+			if d := m.getNodeDepth(node, n.Children, depth+1); d >= 0 {
+				return d
+			}
+		}
+	}
+	return -1
 }

@@ -68,6 +68,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logCursor = 0 // Reset log cursor
 		m.editingLogID = 0 // Reset editing state
 		return m, nil
+
+	case SearchResultsLoadedMsg:
+		m.searchKeyword = msg.Keyword
+		m.searchResults = msg.Results
+		m.searchCursor = 0
+		m.viewMode = ViewSearch
+		return m, nil
+
+	case TimelineLoadedMsg:
+		m.timelineEntries = msg.Entries
+		m.timelineCursor = 0
+		m.viewMode = ViewTimeline
+		return m, nil
+
+	case StatsLoadedMsg:
+		m.statsData = msg.Stats
+		m.statsDays = msg.Days
+		m.viewMode = ViewStats
+		return m, nil
+
+	case TreeLoadedMsg:
+		m.treeNodes = msg.Nodes
+		m.treeCursor = 0
+		m.viewMode = ViewTree
+		return m, nil
 	}
 	return m, nil
 }
@@ -84,6 +109,14 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleHelpKeyMsg(msg)
 	case ViewSpawn, ViewEditProcess:
 		return m.handleSpawnKeyMsg(msg)
+	case ViewSearch:
+		return m.handleSearchKeyMsg(msg)
+	case ViewTimeline:
+		return m.handleTimelineKeyMsg(msg)
+	case ViewStats:
+		return m.handleStatsKeyMsg(msg)
+	case ViewTree:
+		return m.handleTreeKeyMsg(msg)
 	}
 	return m, nil
 }
@@ -169,6 +202,27 @@ func (m Model) handleListKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Show all
 		m.statusFilter = ""
 		return m, refreshProcessesWithFilter("")
+
+	case "/":
+		// Search
+		m.textInput.Reset()
+		m.textInput.Placeholder = "Search keyword..."
+		m.inputPrompt = "Search"
+		m.viewMode = ViewInput
+		m.editingLogID = 0 // Use editingLogID=0 to indicate search mode
+		return m, nil
+
+	case "G":
+		// Global timeline
+		return m, loadTimeline(0)
+
+	case "D":
+		// Stats dashboard
+		return m, loadStats(m.statsDays)
+
+	case "Y":
+		// Process tree
+		return m, loadTree()
 	}
 
 	return m, nil
@@ -305,9 +359,18 @@ func getViewportHeight() int {
 func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		// Submit the input
 		input := m.textInput.Value()
-		if input != "" && m.currentProcess != nil {
+		if input == "" {
+			return m, nil
+		}
+
+		// Check if this is search mode
+		if m.inputPrompt == "Search" {
+			return m, loadSearchResults(input)
+		}
+
+		// Log add/edit mode
+		if m.currentProcess != nil {
 			return m, func() tea.Msg {
 				var err error
 
@@ -342,8 +405,12 @@ func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "esc":
-		// Cancel input
-		m.viewMode = ViewDetail
+		// Cancel input - return to previous view
+		if m.inputPrompt == "Search" {
+			m.viewMode = ViewList
+		} else {
+			m.viewMode = ViewDetail
+		}
 		m.editingLogID = 0
 		return m, nil
 
@@ -492,4 +559,182 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, cmd
 	}
+}
+
+func (m Model) handleSearchKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "ctrl+c", "esc":
+		m.quitting = true
+		return m, tea.Quit
+
+	case "j", "down":
+		if m.searchCursor < len(m.searchResults)-1 {
+			m.searchCursor++
+		}
+		return m, nil
+
+	case "k", "up":
+		if m.searchCursor > 0 {
+			m.searchCursor--
+		}
+		return m, nil
+
+	case "enter":
+		if len(m.searchResults) > 0 && m.searchCursor < len(m.searchResults) {
+			result := m.searchResults[m.searchCursor]
+			if result.Type == "process" {
+				return m, func() tea.Msg {
+					return ShowDetailMsg{ProcessID: result.ID}
+				}
+			} else {
+				// It's a log, navigate to its process
+				return m, func() tea.Msg {
+					return ShowDetailMsg{ProcessID: result.ProcessID}
+				}
+			}
+		}
+		return m, nil
+
+	case "/":
+		// New search
+		m.textInput.Reset()
+		m.textInput.Placeholder = "Search keyword..."
+		m.inputPrompt = "Search"
+		m.viewMode = ViewInput
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m Model) handleTimelineKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "ctrl+c", "esc":
+		m.quitting = true
+		return m, tea.Quit
+
+	case "j", "down":
+		if m.timelineCursor < len(m.timelineEntries)-1 {
+			m.timelineCursor++
+		}
+		return m, nil
+
+	case "k", "up":
+		if m.timelineCursor > 0 {
+			m.timelineCursor--
+		}
+		return m, nil
+
+	case "enter":
+		if len(m.timelineEntries) > 0 && m.timelineCursor < len(m.timelineEntries) {
+			entry := m.timelineEntries[m.timelineCursor]
+			return m, func() tea.Msg {
+				return ShowDetailMsg{ProcessID: entry.ProcessID}
+			}
+		}
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m Model) handleStatsKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "ctrl+c", "esc":
+		m.quitting = true
+		return m, tea.Quit
+
+	case "h":
+		// Show stats for past 7 days
+		return m, loadStats(7)
+
+	case "H":
+		// Show stats for past 90 days
+		return m, loadStats(90)
+
+	case "d":
+		// Show stats for past 30 days (default)
+		return m, loadStats(30)
+
+	case "D":
+		// Show stats for past 365 days
+		return m, loadStats(365)
+	}
+	return m, nil
+}
+
+func (m Model) handleTreeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "ctrl+c", "esc":
+		m.quitting = true
+		return m, tea.Quit
+
+	case "j", "down":
+		// Navigate to next visible node
+		m.treeCursor = m.getNextVisibleTreeNode(m.treeCursor, 1)
+		return m, nil
+
+	case "k", "up":
+		// Navigate to previous visible node
+		m.treeCursor = m.getNextVisibleTreeNode(m.treeCursor, -1)
+		return m, nil
+
+	case "enter":
+		// View process details
+		nodes := m.getVisibleTreeNodes()
+		if m.treeCursor < len(nodes) {
+			return m, func() tea.Msg {
+				return ShowDetailMsg{ProcessID: nodes[m.treeCursor].ID}
+			}
+		}
+		return m, nil
+
+	case " ":
+		// Toggle expand/collapse
+		nodes := m.getVisibleTreeNodes()
+		if m.treeCursor < len(nodes) {
+			nodeID := nodes[m.treeCursor].ID
+			if m.treeExpanded[nodeID] {
+				delete(m.treeExpanded, nodeID)
+			} else {
+				m.treeExpanded[nodeID] = true
+			}
+		}
+		return m, nil
+	}
+	return m, nil
+}
+
+// getVisibleTreeNodes returns all visible tree nodes (respecting expand/collapse)
+func (m Model) getVisibleTreeNodes() []core.ProcessNode {
+	return m.flattenTreeNodes(m.treeNodes, 0)
+}
+
+// flattenTreeNodes recursively flattens tree nodes to a list
+func (m Model) flattenTreeNodes(nodes []*core.ProcessNode, depth int) []core.ProcessNode {
+	var result []core.ProcessNode
+	for _, node := range nodes {
+		// Add the node
+		result = append(result, *node)
+		// Add children if expanded
+		if m.treeExpanded[node.ID] && len(node.Children) > 0 {
+			result = append(result, m.flattenTreeNodes(node.Children, depth+1)...)
+		}
+	}
+	return result
+}
+
+// getNextVisibleTreeNode finds the next/previous visible tree node
+func (m Model) getNextVisibleTreeNode(current int, direction int) int {
+	nodes := m.getVisibleTreeNodes()
+	if len(nodes) == 0 {
+		return 0
+	}
+
+	newIndex := current + direction
+	if newIndex < 0 {
+		newIndex = 0
+	} else if newIndex >= len(nodes) {
+		newIndex = len(nodes) - 1
+	}
+
+	return newIndex
 }
