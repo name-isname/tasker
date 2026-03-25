@@ -69,6 +69,7 @@ var timelineCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(timelineCmd)
+	timelineCmd.GroupID = GroupAnalysis
 	timelineCmd.Flags().IntVarP(&timelineDays, "days", "D", 0, "Show logs for past N days")
 	timelineCmd.Flags().IntVarP(&timelineLimit, "limit", "n", 50, "Limit number of entries")
 }

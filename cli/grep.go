@@ -69,4 +69,5 @@ var grepCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(grepCmd)
+	grepCmd.GroupID = GroupAnalysis
 }

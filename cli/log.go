@@ -31,4 +31,5 @@ var logCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(logCmd)
+	logCmd.GroupID = GroupLogs
 }

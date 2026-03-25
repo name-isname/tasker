@@ -15,4 +15,5 @@ var tuiCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(tuiCmd)
+	tuiCmd.GroupID = GroupUI
 }

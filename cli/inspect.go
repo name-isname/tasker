@@ -110,4 +110,5 @@ func wordWrap(s string, width int) []string {
 
 func init() {
 	rootCmd.AddCommand(inspectCmd)
+	inspectCmd.GroupID = GroupProcess
 }

@@ -121,6 +121,7 @@ func getPriorityIcon(priority core.ProcessPriority) string {
 
 func init() {
 	rootCmd.AddCommand(psCmd)
+	psCmd.GroupID = GroupProcess
 	psCmd.Flags().StringVarP(&psStatus, "status", "s", "running", "Filter by status (running, blocked, suspended, terminated, all)")
 	psCmd.Flags().BoolVarP(&psTree, "tree", "t", false, "Display as hierarchical tree")
 }

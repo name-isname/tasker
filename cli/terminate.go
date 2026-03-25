@@ -36,5 +36,6 @@ var terminateCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(terminateCmd)
+	terminateCmd.GroupID = GroupState
 	terminateCmd.Flags().StringVarP(&terminateReason, "message", "m", "", "Completion message")
 }

@@ -10,6 +10,15 @@ var (
 	jsonOutput bool
 )
 
+// Command groups for better organization
+const (
+	GroupProcess = "process"
+	GroupState   = "state"
+	GroupLogs    = "logs"
+	GroupAnalysis = "analysis"
+	GroupUI      = "ui"
+)
+
 var rootCmd = &cobra.Command{
 	Use:   "taskctl",
 	Short: "A process-oriented task management tool",
@@ -79,6 +88,32 @@ func Execute() {
 func init() {
 	rootCmd.PersistentFlags().StringP("db", "d", "./taskctl.db", "Path to the SQLite database")
 	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
+
+	// Set up command groups for better organization
+	rootCmd.AddGroup(&cobra.Group{
+		ID:    GroupProcess,
+		Title: "Process Management",
+	})
+
+	rootCmd.AddGroup(&cobra.Group{
+		ID:    GroupState,
+		Title: "State Management",
+	})
+
+	rootCmd.AddGroup(&cobra.Group{
+		ID:    GroupLogs,
+		Title: "Log Management",
+	})
+
+	rootCmd.AddGroup(&cobra.Group{
+		ID:    GroupAnalysis,
+		Title: "Analysis & Search",
+	})
+
+	rootCmd.AddGroup(&cobra.Group{
+		ID:    GroupUI,
+		Title: "Interface & Export",
+	})
 
 	// Add custom help flag that works with -h
 	rootCmd.SetHelpCommand(&cobra.Command{

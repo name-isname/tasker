@@ -40,4 +40,5 @@ var treeCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(treeCmd)
+	treeCmd.GroupID = GroupAnalysis
 }

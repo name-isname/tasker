@@ -36,5 +36,6 @@ var blockCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(blockCmd)
+	blockCmd.GroupID = GroupState
 	blockCmd.Flags().StringVarP(&blockReason, "message", "m", "", "Reason for blocking")
 }

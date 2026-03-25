@@ -69,5 +69,6 @@ var statsCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(statsCmd)
+	statsCmd.GroupID = GroupAnalysis
 	statsCmd.Flags().IntVarP(&statsDays, "days", "D", 30, "Number of days to analyze")
 }

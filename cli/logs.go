@@ -68,5 +68,6 @@ var logsCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(logsCmd)
+	logsCmd.GroupID = GroupLogs
 	logsCmd.Flags().IntVarP(&logsTail, "tail", "n", 0, "Show only N most recent logs")
 }

@@ -131,5 +131,6 @@ func getLogIconMarkdown(logType core.LogType) string {
 
 func init() {
 	rootCmd.AddCommand(exportCmd)
-	exportCmd.Flags().StringVarP(&exportDir, "dir", "d", "", "Output directory")
+	exportCmd.GroupID = GroupUI
+	exportCmd.Flags().StringVarP(&exportDir, "dir", "D", "", "Output directory")
 }

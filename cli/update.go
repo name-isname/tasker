@@ -63,6 +63,7 @@ var updateCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(updateCmd)
+	updateCmd.GroupID = GroupProcess
 	updateCmd.Flags().StringVarP(&updateTitle, "title", "t", "", "New title")
 	updateCmd.Flags().StringVarP(&updateDesc, "desc", "D", "", "New description")
 	updateCmd.Flags().StringVar(&updatePriority, "priority", "", "New priority (low, medium, high)")

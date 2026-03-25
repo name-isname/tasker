@@ -51,6 +51,7 @@ Each process can have child sub-processes, creating an infinite hierarchy.`,
 
 func init() {
 	rootCmd.AddCommand(spawnCmd)
+	spawnCmd.GroupID = GroupProcess
 	spawnCmd.Flags().StringVarP(&spawnDesc, "desc", "D", "", "Process description (supports Markdown)")
 	spawnCmd.Flags().UintVarP(&spawnParent, "parent", "p", 0, "Parent process ID (creates sub-process)")
 	spawnCmd.Flags().StringVarP(&spawnPriority, "priority", "P", "medium", "Priority level: low, medium, high")

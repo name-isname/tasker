@@ -36,5 +36,6 @@ var wakeCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(wakeCmd)
+	wakeCmd.GroupID = GroupState
 	wakeCmd.Flags().StringVarP(&wakeReason, "message", "m", "", "Reason for waking up")
 }

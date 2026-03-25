@@ -19,5 +19,6 @@ var webCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(webCmd)
+	webCmd.GroupID = GroupUI
 	webCmd.Flags().StringVar(&webPort, "port", "8080", "Port for the web server")
 }
