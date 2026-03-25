@@ -66,10 +66,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if m.viewMode == ViewList {
+	switch m.viewMode {
+	case ViewList:
 		return m.handleListKeyMsg(msg)
+	case ViewDetail:
+		return m.handleDetailKeyMsg(msg)
+	case ViewInput:
+		return m.handleInputKeyMsg(msg)
+	case ViewHelp:
+		return m.handleHelpKeyMsg(msg)
 	}
-	return m.handleDetailKeyMsg(msg)
+	return m, nil
 }
 
 func (m Model) handleListKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -119,7 +126,7 @@ func (m Model) handleListKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "?":
-		// TODO: Show help
+		m.viewMode = ViewHelp
 		return m, nil
 	}
 
@@ -163,8 +170,11 @@ func (m Model) handleDetailKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "a":
-		// Add log
-		// TODO: Show log input dialog
+		// Add log - show input dialog
+		m.textInput.Reset()
+		m.textInput.Placeholder = "Enter log content..."
+		m.inputPrompt = "Add Log"
+		m.viewMode = ViewInput
 		return m, nil
 	}
 
@@ -205,4 +215,54 @@ func (m Model) handleProcessDetailLoaded(msg ProcessDetailLoadedMsg) (tea.Model,
 
 func getViewportHeight() int {
 	return 15 // Approximate visible items
+}
+
+func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		// Submit the input
+		input := m.textInput.Value()
+		if input != "" && m.currentProcess != nil {
+			return m, func() tea.Msg {
+				_, err := core.AddLog(m.currentProcess.ID, core.LogTypeProgress, input)
+				if err != nil {
+					return errMsg{err}
+				}
+				// Refresh process detail
+				process, err := core.GetProcess(m.currentProcess.ID)
+				if err != nil {
+					return errMsg{err}
+				}
+				logs, err := core.GetLogs(m.currentProcess.ID)
+				if err != nil {
+					return errMsg{err}
+				}
+				return ProcessDetailLoadedMsg{
+					Process: process,
+					Logs:    logs,
+				}
+			}
+		}
+		return m, nil
+
+	case "esc":
+		// Cancel input
+		m.viewMode = ViewDetail
+		return m, nil
+
+	default:
+		// Update text input
+		var cmd tea.Cmd
+		m.textInput, cmd = m.textInput.Update(msg)
+		return m, cmd
+	}
+}
+
+func (m Model) handleHelpKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "esc", "?":
+		m.viewMode = ViewList
+		return m, nil
+	}
+	return m, nil
 }

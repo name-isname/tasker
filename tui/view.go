@@ -21,7 +21,13 @@ func (m Model) View() string {
 	if m.viewMode == ViewList {
 		return m.listView()
 	}
-	return m.detailView()
+	if m.viewMode == ViewDetail {
+		return m.detailView()
+	}
+	if m.viewMode == ViewInput {
+		return m.inputView()
+	}
+	return m.helpView()
 }
 
 func (m Model) listView() string {
@@ -253,4 +259,56 @@ func (m Model) getPriorityStyle(priority core.ProcessPriority) lipgloss.Style {
 	default:
 		return helpStyle
 	}
+}
+
+func (m Model) inputView() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render(" "+m.inputPrompt+" ") + "\n")
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
+
+	b.WriteString(m.textInput.View())
+	b.WriteString("\n\n")
+	b.WriteString(helpStyle.Render(" enter:确认  esc:取消"))
+
+	return b.String()
+}
+
+func (m Model) helpView() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render(" 帮助 ") + "\n")
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
+
+	b.WriteString(titleStyle.Render("列表视图快捷键:\n"))
+	b.WriteString("  j/k or ↑/↓    导航进程列表\n")
+	b.WriteString("  1-9           快速跳转到第N项\n")
+	b.WriteString("  enter         查看进程详情\n")
+	b.WriteString("  s             新建进程 (TODO)\n")
+	b.WriteString("  ?             显示帮助\n")
+	b.WriteString("  q/ctrl+c      退出\n\n")
+
+	b.WriteString(titleStyle.Render("详情视图快捷键:\n"))
+	b.WriteString("  b             阻塞进程 (⏸)\n")
+	b.WriteString("  w             唤醒进程 (▶)\n")
+	b.WriteString("  t             终止进程 (✓)\n")
+	b.WriteString("  a             添加日志\n")
+	b.WriteString("  esc/h/←       返回列表\n")
+	b.WriteString("  q             退出\n\n")
+
+	b.WriteString(titleStyle.Render("状态图标:\n"))
+	b.WriteString("  ▶             运行中 (running)\n")
+	b.WriteString("  ⏸             已阻塞 (blocked)\n")
+	b.WriteString("  ⏹             已暂停 (suspended)\n")
+	b.WriteString("  ✓             已终止 (terminated)\n\n")
+
+	b.WriteString(titleStyle.Render("优先级图标:\n"))
+	b.WriteString("  H             高优先级\n")
+	b.WriteString("  M             中优先级\n")
+	b.WriteString("  L             低优先级\n\n")
+
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+	b.WriteString(helpStyle.Render(" esc/?:关闭帮助"))
+
+	return b.String()
 }

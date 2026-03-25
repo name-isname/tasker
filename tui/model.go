@@ -3,6 +3,7 @@ package tui
 import (
 	"time"
 	"github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/textinput"
 	"taskctl/core"
 )
 
@@ -12,6 +13,8 @@ type ViewMode int
 const (
 	ViewList ViewMode = iota
 	ViewDetail
+	ViewInput
+	ViewHelp
 )
 
 // Model represents the TUI state
@@ -36,6 +39,10 @@ type Model struct {
 	// Status filter
 	statusFilter core.ProcessStatus
 	filtering     bool
+
+	// Text input
+	textInput     textinput.Model
+	inputPrompt   string
 }
 
 // Messages
@@ -54,11 +61,16 @@ type (
 
 // InitialModel creates the initial TUI model
 func InitialModel() Model {
+	ti := textinput.New()
+	ti.Placeholder = "Enter log content..."
+	ti.Focus()
+
 	return Model{
 		viewMode:     ViewList,
 		processes:    []core.Process{},
 		selectedIdx:  0,
 		statusFilter: core.StatusRunning,
+		textInput:    ti,
 	}
 }
 
