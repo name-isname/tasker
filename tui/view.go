@@ -27,7 +27,10 @@ func (m Model) View() string {
 	if m.viewMode == ViewInput {
 		return m.inputView()
 	}
-	return m.helpView()
+	if m.viewMode == ViewHelp {
+		return m.helpView()
+	}
+	return m.spawnView()
 }
 
 func (m Model) listView() string {
@@ -132,7 +135,17 @@ func (m Model) renderProcessItem(idx int, process core.Process) string {
 }
 
 func (m Model) renderStatusBar() string {
-	return helpStyle.Render(" j/k:导航  enter:详情  s:新建  q:退出  ?:帮助")
+	filterStr := "全部"
+	if m.statusFilter == core.StatusRunning {
+		filterStr = "运行中"
+	} else if m.statusFilter == core.StatusBlocked {
+		filterStr = "已阻塞"
+	} else if m.statusFilter == core.StatusSuspended {
+		filterStr = "已暂停"
+	} else if m.statusFilter == core.StatusTerminated {
+		filterStr = "已终止"
+	}
+	return helpStyle.Render(fmt.Sprintf(" 过滤:%s | j/k:导航  enter:详情  s:新建  r/B/S/T:过滤  q:退出  ?:帮助", filterStr))
 }
 
 func (m Model) detailView() string {
@@ -284,7 +297,8 @@ func (m Model) helpView() string {
 	b.WriteString("  j/k or ↑/↓    导航进程列表\n")
 	b.WriteString("  1-9           快速跳转到第N项\n")
 	b.WriteString("  enter         查看进程详情\n")
-	b.WriteString("  s             新建进程 (TODO)\n")
+	b.WriteString("  s             新建进程\n")
+	b.WriteString("  r/B/S/T/A     按状态过滤 (运行/阻塞/暂停/终止/全部)\n")
 	b.WriteString("  ?             显示帮助\n")
 	b.WriteString("  q/ctrl+c      退出\n\n")
 
@@ -309,6 +323,39 @@ func (m Model) helpView() string {
 
 	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
 	b.WriteString(helpStyle.Render(" esc/?:关闭帮助"))
+
+	return b.String()
+}
+
+func (m Model) spawnView() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render(" 新建进程 ") + "\n")
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
+
+	// Title field
+	titleLabel := "标题:"
+	if m.spawnFocusedField == 0 {
+		titleLabel = cursorStyle.Render(titleLabel)
+	}
+	b.WriteString(titleLabel + " " + m.spawnTitle.View() + "\n\n")
+
+	// Description field
+	descLabel := "描述:"
+	if m.spawnFocusedField == 1 {
+		descLabel = cursorStyle.Render(descLabel)
+	}
+	b.WriteString(descLabel + " " + m.spawnDesc.View() + "\n\n")
+
+	// Priority field
+	priorityLabel := "优先级:"
+	if m.spawnFocusedField == 2 {
+		priorityLabel = cursorStyle.Render(priorityLabel)
+	}
+	b.WriteString(priorityLabel + " " + m.spawnPriority.View() + " (H/M/L)\n\n")
+
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+	b.WriteString(helpStyle.Render(" tab:切换字段  enter:创建  esc:取消"))
 
 	return b.String()
 }

@@ -36,11 +36,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleKeyMsg(msg)
 
 	case TickMsg:
-		// Auto-refresh every tick
-		return m, refreshProcesses()
+		// Auto-refresh every tick with current filter
+		return m, refreshProcessesWithFilter(m.statusFilter)
 
 	case ProcessesLoadedMsg:
 		m.processes = msg.Processes
+		// Reset cursor if out of bounds
+		if m.cursor >= len(m.processes) {
+			m.cursor = 0
+			m.viewportOffset = 0
+		}
 		return m, nil
 
 	case ShowDetailMsg:
@@ -75,6 +80,8 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleInputKeyMsg(msg)
 	case ViewHelp:
 		return m.handleHelpKeyMsg(msg)
+	case ViewSpawn:
+		return m.handleSpawnKeyMsg(msg)
 	}
 	return m, nil
 }
@@ -113,7 +120,13 @@ func (m Model) handleListKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "s":
-		// TODO: Show spawn dialog
+		// Show spawn dialog
+		m.spawnTitle.Reset()
+		m.spawnDesc.Reset()
+		m.spawnPriority.SetValue("M")
+		m.spawnFocusedField = 0
+		m.spawnTitle.Focus()
+		m.viewMode = ViewSpawn
 		return m, nil
 
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
@@ -128,6 +141,31 @@ func (m Model) handleListKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "?":
 		m.viewMode = ViewHelp
 		return m, nil
+
+	case "r":
+		// Filter by running
+		m.statusFilter = core.StatusRunning
+		return m, refreshProcessesWithFilter(core.StatusRunning)
+
+	case "B":
+		// Filter by blocked
+		m.statusFilter = core.StatusBlocked
+		return m, refreshProcessesWithFilter(core.StatusBlocked)
+
+	case "S":
+		// Filter by suspended
+		m.statusFilter = core.StatusSuspended
+		return m, refreshProcessesWithFilter(core.StatusSuspended)
+
+	case "T":
+		// Filter by terminated
+		m.statusFilter = core.StatusTerminated
+		return m, refreshProcessesWithFilter(core.StatusTerminated)
+
+	case "A":
+		// Show all
+		m.statusFilter = ""
+		return m, refreshProcessesWithFilter("")
 	}
 
 	return m, nil
@@ -265,4 +303,97 @@ func (m Model) handleHelpKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	return m, nil
+}
+
+func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "q":
+		// Cancel
+		m.viewMode = ViewList
+		return m, nil
+
+	case "enter":
+		// Submit and create process
+		title := m.spawnTitle.Value()
+		desc := m.spawnDesc.Value()
+		priorityStr := m.spawnPriority.Value()
+
+		if title == "" {
+			return m, nil
+		}
+
+		var priority core.ProcessPriority
+		switch priorityStr {
+		case "H", "h":
+			priority = core.PriorityHigh
+		case "L", "l":
+			priority = core.PriorityLow
+		default:
+			priority = core.PriorityMedium
+		}
+
+		return m, func() tea.Msg {
+			_, err := core.CreateProcess(title, desc, nil, priority)
+			if err != nil {
+				return errMsg{err}
+			}
+			// Refresh processes
+			processes, err := core.ListProcesses(nil)
+			if err != nil {
+				return errMsg{err}
+			}
+			return ProcessesLoadedMsg{Processes: processes}
+		}
+
+	case "tab":
+		// Navigate between fields
+		m.spawnFocusedField = (m.spawnFocusedField + 1) % 3
+		switch m.spawnFocusedField {
+		case 0:
+			m.spawnTitle.Focus()
+			m.spawnDesc.Blur()
+			m.spawnPriority.Blur()
+		case 1:
+			m.spawnTitle.Blur()
+			m.spawnDesc.Focus()
+			m.spawnPriority.Blur()
+		case 2:
+			m.spawnTitle.Blur()
+			m.spawnDesc.Blur()
+			m.spawnPriority.Focus()
+		}
+		return m, nil
+
+	case "shift+tab":
+		// Navigate backwards
+		m.spawnFocusedField = (m.spawnFocusedField + 2) % 3
+		switch m.spawnFocusedField {
+		case 0:
+			m.spawnTitle.Focus()
+			m.spawnDesc.Blur()
+			m.spawnPriority.Blur()
+		case 1:
+			m.spawnTitle.Blur()
+			m.spawnDesc.Focus()
+			m.spawnPriority.Blur()
+		case 2:
+			m.spawnTitle.Blur()
+			m.spawnDesc.Blur()
+			m.spawnPriority.Focus()
+		}
+		return m, nil
+
+	default:
+		// Update the focused field
+		var cmd tea.Cmd
+		switch m.spawnFocusedField {
+		case 0:
+			m.spawnTitle, cmd = m.spawnTitle.Update(msg)
+		case 1:
+			m.spawnDesc, cmd = m.spawnDesc.Update(msg)
+		case 2:
+			m.spawnPriority, cmd = m.spawnPriority.Update(msg)
+		}
+		return m, cmd
+	}
 }
