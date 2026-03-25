@@ -65,6 +65,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewMode = ViewDetail
 		m.currentProcess = msg.Process
 		m.processLogs = msg.Logs
+		m.logCursor = 0 // Reset log cursor
+		m.editingLogID = 0 // Reset editing state
 		return m, nil
 	}
 	return m, nil
@@ -212,7 +214,35 @@ func (m Model) handleDetailKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.textInput.Reset()
 		m.textInput.Placeholder = "Enter log content..."
 		m.inputPrompt = "Add Log"
+		m.editingLogID = 0 // New log
 		m.viewMode = ViewInput
+		return m, nil
+
+	case "e":
+		// Edit selected log
+		if len(m.processLogs) > 0 && m.logCursor < len(m.processLogs) {
+			log := m.processLogs[m.logCursor]
+			m.textInput.Reset()
+			m.textInput.SetValue(log.Content)
+			m.textInput.Placeholder = "Edit log content..."
+			m.inputPrompt = "Edit Log"
+			m.editingLogID = log.ID
+			m.viewMode = ViewInput
+		}
+		return m, nil
+
+	case "J", "shift+down":
+		// Move cursor down in logs
+		if m.logCursor < len(m.processLogs)-1 {
+			m.logCursor++
+		}
+		return m, nil
+
+	case "K", "shift+up":
+		// Move cursor up in logs
+		if m.logCursor > 0 {
+			m.logCursor--
+		}
 		return m, nil
 	}
 
@@ -262,10 +292,21 @@ func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		input := m.textInput.Value()
 		if input != "" && m.currentProcess != nil {
 			return m, func() tea.Msg {
-				_, err := core.AddLog(m.currentProcess.ID, core.LogTypeProgress, input)
+				var err error
+
+				// Check if editing existing log or adding new one
+				if m.editingLogID > 0 {
+					// Update existing log
+					err = core.UpdateLog(m.editingLogID, input)
+				} else {
+					// Add new log
+					_, err = core.AddLog(m.currentProcess.ID, core.LogTypeProgress, input)
+				}
+
 				if err != nil {
 					return errMsg{err}
 				}
+
 				// Refresh process detail
 				process, err := core.GetProcess(m.currentProcess.ID)
 				if err != nil {
@@ -286,6 +327,7 @@ func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		// Cancel input
 		m.viewMode = ViewDetail
+		m.editingLogID = 0
 		return m, nil
 
 	default:

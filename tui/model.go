@@ -44,12 +44,16 @@ type Model struct {
 	// Text input
 	textInput     textinput.Model
 	inputPrompt   string
+	editingLogID  uint // 0 for new log, >0 for editing existing log
 
 	// Spawn form fields
 	spawnTitle       textinput.Model
 	spawnDesc        textinput.Model
 	spawnPriority    textinput.Model
 	spawnFocusedField int // 0=title, 1=desc, 2=priority
+
+	// Log selection in detail view
+	logCursor int // Index of selected log in processLogs
 }
 
 // Messages

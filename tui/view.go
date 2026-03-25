@@ -186,7 +186,7 @@ func (m Model) detailView() string {
 	if len(m.processLogs) == 0 {
 		b.WriteString(helpStyle.Render("No logs yet.") + "\n")
 	} else {
-		for _, log := range m.processLogs {
+		for i, log := range m.processLogs {
 			timestamp := log.CreatedAt.Format("15:04")
 			icon := "📝"
 			logStyle := logProgressStyle
@@ -194,7 +194,17 @@ func (m Model) detailView() string {
 				icon = "🔄"
 				logStyle = logStateChangeStyle
 			}
-			b.WriteString(fmt.Sprintf("   [%s] %s %s\n",
+
+			// Add cursor indicator for selected log
+			cursor := " "
+			if i == m.logCursor {
+				cursor = cursorStyle.Render("►")
+			} else {
+				cursor = " "
+			}
+
+			b.WriteString(fmt.Sprintf(" %s [%s] %s %s\n",
+				cursor,
 				helpStyle.Render(timestamp),
 				logStyle.Render(icon),
 				log.Content))
@@ -210,7 +220,7 @@ func (m Model) detailView() string {
 }
 
 func (m Model) renderDetailStatusBar() string {
-	return helpStyle.Render(" b:block  w:wake  t:terminate  a:add log  esc:back  q:quit")
+	return helpStyle.Render(" b:block  w:wake  t:terminate  a:add log  e:edit log  J/K:select log  esc:back  q:quit")
 }
 
 func (m Model) errorView() string {
@@ -293,7 +303,7 @@ func (m Model) helpView() string {
 	b.WriteString(titleStyle.Render(" 帮助 ") + "\n")
 	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
 
-	b.WriteString(titleStyle.Render("列表视图快捷键:\n"))
+	b.WriteString(titleStyle.Render("列表视图快捷键:") + "\n")
 	b.WriteString("  j/k or ↑/↓    导航进程列表\n")
 	b.WriteString("  1-9           快速跳转到第N项\n")
 	b.WriteString("  enter         查看进程详情\n")
@@ -302,21 +312,23 @@ func (m Model) helpView() string {
 	b.WriteString("  ?             显示帮助\n")
 	b.WriteString("  q/ctrl+c      退出\n\n")
 
-	b.WriteString(titleStyle.Render("详情视图快捷键:\n"))
+	b.WriteString(titleStyle.Render("详情视图快捷键:") + "\n")
 	b.WriteString("  b             阻塞进程 (⏸)\n")
 	b.WriteString("  w             唤醒进程 (▶)\n")
 	b.WriteString("  t             终止进程 (✓)\n")
 	b.WriteString("  a             添加日志\n")
+	b.WriteString("  e             编辑选中的日志\n")
+	b.WriteString("  J/K           选择日志\n")
 	b.WriteString("  esc/h/←       返回列表\n")
 	b.WriteString("  q             退出\n\n")
 
-	b.WriteString(titleStyle.Render("状态图标:\n"))
+	b.WriteString(titleStyle.Render("状态图标:") + "\n")
 	b.WriteString("  ▶             运行中 (running)\n")
 	b.WriteString("  ⏸             已阻塞 (blocked)\n")
 	b.WriteString("  ⏹             已暂停 (suspended)\n")
 	b.WriteString("  ✓             已终止 (terminated)\n\n")
 
-	b.WriteString(titleStyle.Render("优先级图标:\n"))
+	b.WriteString(titleStyle.Render("优先级图标:") + "\n")
 	b.WriteString("  H             高优先级\n")
 	b.WriteString("  M             中优先级\n")
 	b.WriteString("  L             低优先级\n\n")
