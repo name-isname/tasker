@@ -67,6 +67,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.processLogs = msg.Logs
 		m.logCursor = 0 // Reset log cursor
 		m.editingLogID = 0 // Reset editing state
+		m.pendingStateChange = nil // Clear pending state change
 		return m, nil
 
 	case SearchResultsLoadedMsg:
@@ -93,6 +94,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.treeCursor = 0
 		m.viewMode = ViewTree
 		return m, nil
+
+	case ParentsLoadedMsg:
+		return m.handleParentsLoaded(msg)
 	}
 	return m, nil
 }
@@ -117,6 +121,8 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleStatsKeyMsg(msg)
 	case ViewTree:
 		return m.handleTreeKeyMsg(msg)
+	case ViewParentSelect:
+		return m.handleParentSelectKeyMsg(msg)
 	}
 	return m, nil
 }
@@ -162,6 +168,7 @@ func (m Model) handleListKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.spawnFocusedField = 0
 		m.spawnTitle.Focus()
 		m.editingProcessID = 0 // Ensure we're in create mode
+		m.selectedParentID = nil // Reset parent selection
 		m.viewMode = ViewSpawn
 		return m, nil
 
@@ -244,28 +251,69 @@ func (m Model) handleDetailKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "b":
 		// Block process
 		if m.currentProcess != nil {
-			return m, func() tea.Msg {
-				_ = core.ChangeProcessState(m.currentProcess.ID, core.StatusBlocked, "")
-				return BackToListMsg{}
+			// Check if already blocked
+			if m.currentProcess.Status == core.StatusBlocked {
+				return m, nil // Already in this state, do nothing
 			}
+			// Prompt for optional note
+			m.textInput.Reset()
+			m.textInput.Placeholder = "输入备注（可选，直接enter跳过）..."
+			m.inputPrompt = "阻塞进程"
+			status := core.StatusBlocked
+			m.pendingStateChange = &status
+			m.viewMode = ViewInput
+			return m, nil
+		}
+
+	case "p":
+		// Set process to waiting
+		if m.currentProcess != nil {
+			// Check if already suspended
+			if m.currentProcess.Status == core.StatusSuspended {
+				return m, nil // Already in this state, do nothing
+			}
+			// Prompt for optional note
+			m.textInput.Reset()
+			m.textInput.Placeholder = "输入备注（可选，直接enter跳过）..."
+			m.inputPrompt = "等待中"
+			status := core.StatusSuspended
+			m.pendingStateChange = &status
+			m.viewMode = ViewInput
+			return m, nil
 		}
 
 	case "w":
 		// Wake process
 		if m.currentProcess != nil {
-			return m, func() tea.Msg {
-				_ = core.ChangeProcessState(m.currentProcess.ID, core.StatusRunning, "")
-				return BackToListMsg{}
+			// Check if already running
+			if m.currentProcess.Status == core.StatusRunning {
+				return m, nil // Already in this state, do nothing
 			}
+			// Prompt for optional note
+			m.textInput.Reset()
+			m.textInput.Placeholder = "输入备注（可选，直接enter跳过）..."
+			m.inputPrompt = "唤醒进程"
+			status := core.StatusRunning
+			m.pendingStateChange = &status
+			m.viewMode = ViewInput
+			return m, nil
 		}
 
 	case "t":
 		// Terminate process
 		if m.currentProcess != nil {
-			return m, func() tea.Msg {
-				_ = core.ChangeProcessState(m.currentProcess.ID, core.StatusTerminated, "")
-				return BackToListMsg{}
+			// Check if already terminated
+			if m.currentProcess.Status == core.StatusTerminated {
+				return m, nil // Already in this state, do nothing
 			}
+			// Prompt for optional note
+			m.textInput.Reset()
+			m.textInput.Placeholder = "输入备注（可选，直接enter跳过）..."
+			m.inputPrompt = "终止进程"
+			status := core.StatusTerminated
+			m.pendingStateChange = &status
+			m.viewMode = ViewInput
+			return m, nil
 		}
 
 	case "a":
@@ -302,7 +350,26 @@ func (m Model) handleDetailKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.spawnFocusedField = 0
 			m.spawnTitle.Focus()
 			m.editingProcessID = m.currentProcess.ID
+			m.selectedParentID = m.currentProcess.ParentID // Set current parent
 			m.viewMode = ViewEditProcess
+		}
+		return m, nil
+
+	case "d":
+		// Delete process
+		if m.currentProcess != nil {
+			return m, func() tea.Msg {
+				err := core.DeleteProcess(m.currentProcess.ID)
+				if err != nil {
+					return errMsg{err}
+				}
+				// Refresh processes and return to list
+				processes, err := core.ListProcesses(nil)
+				if err != nil {
+					return errMsg{err}
+				}
+				return ProcessesLoadedMsg{Processes: processes}
+			}
 		}
 		return m, nil
 
@@ -362,19 +429,46 @@ func getViewportHeight() int {
 
 func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "enter":
-		input := m.textInput.Value()
-		if input == "" {
-			return m, nil
+	case "ctrl+enter":
+		// Handle state change prompts (allow empty input)
+		if m.pendingStateChange != nil && m.currentProcess != nil {
+			note := m.textInput.Value()
+			newStatus := *m.pendingStateChange
+			return m, func() tea.Msg {
+				if err := core.ChangeProcessState(m.currentProcess.ID, newStatus, note); err != nil {
+					return errMsg{err}
+				}
+				// Refresh process detail
+				process, err := core.GetProcess(m.currentProcess.ID)
+				if err != nil {
+					return errMsg{err}
+				}
+				logs, err := core.GetLogs(m.currentProcess.ID)
+				if err != nil {
+					return errMsg{err}
+				}
+				return ProcessDetailLoadedMsg{
+					Process: process,
+					Logs:    logs,
+				}
+			}
 		}
 
-		// Check if this is search mode
+		// Check if this is search mode (single-line)
 		if m.inputPrompt == "Search" {
+			input := m.textInput.Value()
+			if input == "" {
+				return m, nil
+			}
 			return m, loadSearchResults(input)
 		}
 
-		// Log add/edit mode
+		// Log add/edit mode (multi-line) - submit on Ctrl+Enter
 		if m.currentProcess != nil {
+			input := m.textInput.Value()
+			if input == "" {
+				return m, nil
+			}
 			return m, func() tea.Msg {
 				var err error
 
@@ -406,7 +500,49 @@ func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+
+		// If none of the above conditions matched, return nil
 		return m, nil
+
+	case "enter":
+		// For state change and search, regular enter submits
+		if m.pendingStateChange != nil && m.currentProcess != nil {
+			note := m.textInput.Value()
+			newStatus := *m.pendingStateChange
+			return m, func() tea.Msg {
+				if err := core.ChangeProcessState(m.currentProcess.ID, newStatus, note); err != nil {
+					return errMsg{err}
+				}
+				// Refresh process detail
+				process, err := core.GetProcess(m.currentProcess.ID)
+				if err != nil {
+					return errMsg{err}
+				}
+				logs, err := core.GetLogs(m.currentProcess.ID)
+				if err != nil {
+					return errMsg{err}
+				}
+				return ProcessDetailLoadedMsg{
+					Process: process,
+					Logs:    logs,
+				}
+			}
+		}
+
+		// Check if this is search mode (single-line)
+		if m.inputPrompt == "Search" {
+			input := m.textInput.Value()
+			if input == "" {
+				return m, nil
+			}
+			return m, loadSearchResults(input)
+		}
+
+		// For log input, let textarea handle regular enter (newline)
+		// Update the textarea with the enter key
+		var cmd tea.Cmd
+		m.textInput, cmd = m.textInput.Update(msg)
+		return m, cmd
 
 	case "esc":
 		// Cancel input - return to previous view
@@ -416,10 +552,11 @@ func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.viewMode = ViewDetail
 		}
 		m.editingLogID = 0
+		m.pendingStateChange = nil // Clear pending state change
 		return m, nil
 
 	default:
-		// Update text input
+		// Update textarea
 		var cmd tea.Cmd
 		m.textInput, cmd = m.textInput.Update(msg)
 		return m, cmd
@@ -430,6 +567,17 @@ func (m Model) handleHelpKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q", "esc", "?":
 		m.viewMode = ViewList
+		m.helpOffset = 0 // Reset scroll
+		return m, nil
+
+	case "j", "down":
+		m.helpOffset++
+		return m, nil
+
+	case "k", "up":
+		if m.helpOffset > 0 {
+			m.helpOffset--
+		}
 		return m, nil
 	}
 	return m, nil
@@ -458,63 +606,30 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.viewMode = ViewList
 		return m, nil
 
+	case "ctrl+enter":
+		// Ctrl+Enter submits the form
+		return m.submitSpawnForm()
+
 	case "enter":
-		// Submit and create/update process
-		title := m.spawnTitle.Value()
-		desc := m.spawnDesc.Value()
-		priorityStr := m.spawnPriority.Value()
-
-		if title == "" {
-			return m, nil
+		// Regular Enter on parent field - open parent selection
+		if m.spawnFocusedField == 3 {
+			return m, m.loadAvailableParents()
 		}
 
-		var priority core.ProcessPriority
-		switch priorityStr {
-		case "H", "h":
-			priority = core.PriorityHigh
-		case "L", "l":
-			priority = core.PriorityLow
-		default:
-			priority = core.PriorityMedium
+		// For description field (textarea), let it handle enter (newline)
+		if m.spawnFocusedField == 1 {
+			// Update the textarea with the enter key
+			var cmd tea.Cmd
+			m.spawnDesc, cmd = m.spawnDesc.Update(msg)
+			return m, cmd
 		}
 
-		if m.editingProcessID > 0 {
-			// Update existing process
-			return m, func() tea.Msg {
-				err := core.UpdateProcess(m.editingProcessID, &title, &desc, &priority)
-				if err != nil {
-					return errMsg{err}
-				}
-				// Refresh process detail
-				process, err := core.GetProcess(m.editingProcessID)
-				if err != nil {
-					return errMsg{err}
-				}
-				logs, err := core.GetLogs(m.editingProcessID)
-				if err != nil {
-					return errMsg{err}
-				}
-				return ProcessDetailLoadedMsg{Process: process, Logs: logs}
-			}
-		}
-
-		// Create new process
-		return m, func() tea.Msg {
-			_, err := core.CreateProcess(title, desc, nil, priority)
-			if err != nil {
-				return errMsg{err}
-			}
-			// Refresh processes
-			processes, err := core.ListProcesses(nil)
-			if err != nil {
-				return errMsg{err}
-			}
-			return ProcessesLoadedMsg{Processes: processes}
-		}
+		// For other fields, no action on enter (need Ctrl+Enter to submit)
+		return m, nil
 
 	case "tab":
 		// Navigate between fields
-		m.spawnFocusedField = (m.spawnFocusedField + 1) % 3
+		m.spawnFocusedField = (m.spawnFocusedField + 1) % 4
 		switch m.spawnFocusedField {
 		case 0:
 			m.spawnTitle.Focus()
@@ -528,12 +643,16 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.spawnTitle.Blur()
 			m.spawnDesc.Blur()
 			m.spawnPriority.Focus()
+		case 3:
+			m.spawnTitle.Blur()
+			m.spawnDesc.Blur()
+			m.spawnPriority.Blur()
 		}
 		return m, nil
 
 	case "shift+tab":
 		// Navigate backwards
-		m.spawnFocusedField = (m.spawnFocusedField + 2) % 3
+		m.spawnFocusedField = (m.spawnFocusedField + 3) % 4
 		switch m.spawnFocusedField {
 		case 0:
 			m.spawnTitle.Focus()
@@ -547,6 +666,10 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.spawnTitle.Blur()
 			m.spawnDesc.Blur()
 			m.spawnPriority.Focus()
+		case 3:
+			m.spawnTitle.Blur()
+			m.spawnDesc.Blur()
+			m.spawnPriority.Blur()
 		}
 		return m, nil
 
@@ -560,8 +683,65 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.spawnDesc, cmd = m.spawnDesc.Update(msg)
 		case 2:
 			m.spawnPriority, cmd = m.spawnPriority.Update(msg)
+		case 3:
+			// Parent field is read-only (no text input)
 		}
 		return m, cmd
+	}
+}
+
+// submitSpawnForm submits the spawn/edit form
+func (m Model) submitSpawnForm() (tea.Model, tea.Cmd) {
+	title := m.spawnTitle.Value()
+	desc := m.spawnDesc.Value()
+	priorityStr := m.spawnPriority.Value()
+
+	if title == "" {
+		return m, nil
+	}
+
+	var priority core.ProcessPriority
+	switch priorityStr {
+	case "H", "h":
+		priority = core.PriorityHigh
+	case "L", "l":
+		priority = core.PriorityLow
+	default:
+		priority = core.PriorityMedium
+	}
+
+	if m.editingProcessID > 0 {
+		// Update existing process
+		return m, func() tea.Msg {
+			err := core.UpdateProcess(m.editingProcessID, &title, &desc, &priority)
+			if err != nil {
+				return errMsg{err}
+			}
+			// Refresh process detail
+			process, err := core.GetProcess(m.editingProcessID)
+			if err != nil {
+				return errMsg{err}
+			}
+			logs, err := core.GetLogs(m.editingProcessID)
+			if err != nil {
+				return errMsg{err}
+			}
+			return ProcessDetailLoadedMsg{Process: process, Logs: logs}
+		}
+	}
+
+	// Create new process
+	return m, func() tea.Msg {
+		_, err := core.CreateProcess(title, desc, m.selectedParentID, priority)
+		if err != nil {
+			return errMsg{err}
+		}
+		// Refresh processes
+		processes, err := core.ListProcesses(nil)
+		if err != nil {
+			return errMsg{err}
+		}
+		return ProcessesLoadedMsg{Processes: processes}
 	}
 }
 
@@ -761,4 +941,87 @@ func (m Model) getNextVisibleTreeNode(current int, direction int) int {
 	}
 
 	return newIndex
+}
+
+// loadAvailableParents loads the available parent processes and switches to parent selection view
+func (m Model) loadAvailableParents() tea.Cmd {
+	return func() tea.Msg {
+		parents, err := core.ListProcesses(nil)
+		if err != nil {
+			return errMsg{err}
+		}
+		return ParentsLoadedMsg{Parents: parents}
+	}
+}
+
+// handleParentsLoaded handles the ParentsLoadedMsg
+func (m Model) handleParentsLoaded(msg ParentsLoadedMsg) (tea.Model, tea.Cmd) {
+	// Filter out the current process if editing (can't be parent of itself)
+	if m.editingProcessID > 0 {
+		filtered := make([]core.Process, 0, len(msg.Parents))
+		for _, p := range msg.Parents {
+			if p.ID != m.editingProcessID {
+				filtered = append(filtered, p)
+			}
+		}
+		m.availableParents = filtered
+	} else {
+		m.availableParents = msg.Parents
+	}
+
+	m.parentCursor = -1 // Start at "None" option
+	m.viewMode = ViewParentSelect
+	return m, nil
+}
+
+func (m Model) handleParentSelectKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "esc":
+		// Return to spawn/edit view
+		if m.editingProcessID > 0 {
+			m.viewMode = ViewEditProcess
+		} else {
+			m.viewMode = ViewSpawn
+		}
+		return m, nil
+
+	case "ctrl+c":
+		m.quitting = true
+		return m, tea.Quit
+
+	case "j", "down":
+		// Move cursor down
+		maxIdx := len(m.availableParents) // -1 to "None" is at cursor=-1
+		if m.parentCursor < maxIdx {
+			m.parentCursor++
+		}
+		return m, nil
+
+	case "k", "up":
+		// Move cursor up
+		if m.parentCursor > -1 {
+			m.parentCursor--
+		}
+		return m, nil
+
+	case "enter":
+		// Select the parent and return to spawn/edit view
+		if m.parentCursor == -1 {
+			// Selected "None"
+			m.selectedParentID = nil
+		} else if m.parentCursor < len(m.availableParents) {
+			// Selected a parent
+			parentID := m.availableParents[m.parentCursor].ID
+			m.selectedParentID = &parentID
+		}
+
+		// Return to spawn/edit view
+		if m.editingProcessID > 0 {
+			m.viewMode = ViewEditProcess
+		} else {
+			m.viewMode = ViewSpawn
+		}
+		return m, nil
+	}
+	return m, nil
 }

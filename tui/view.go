@@ -45,6 +45,9 @@ func (m Model) View() string {
 	if m.viewMode == ViewTree {
 		return m.treeView()
 	}
+	if m.viewMode == ViewParentSelect {
+		return m.parentSelectView()
+	}
 	return ""
 }
 
@@ -156,11 +159,11 @@ func (m Model) renderStatusBar() string {
 	} else if m.statusFilter == core.StatusBlocked {
 		filterStr = "已阻塞"
 	} else if m.statusFilter == core.StatusSuspended {
-		filterStr = "已暂停"
+		filterStr = "等待中"
 	} else if m.statusFilter == core.StatusTerminated {
 		filterStr = "已终止"
 	}
-	return helpStyle.Render(fmt.Sprintf(" 过滤:%s | j/k:导航  enter:详情  s:新建  r/B/S/T:过滤  /:搜索  G:时间线  D:统计  Y:树  q:返回/退出  ?:帮助", filterStr))
+	return helpStyle.Render(fmt.Sprintf(" 过滤:%s | j/k:导航  enter:详情  s:新建  A:全部 r/B/S/T:过滤  /:搜索  G:时间线  D:统计  Y:树  q:返回/退出  ?:帮助", filterStr))
 }
 
 func (m Model) detailView() string {
@@ -235,7 +238,7 @@ func (m Model) detailView() string {
 }
 
 func (m Model) renderDetailStatusBar() string {
-	return helpStyle.Render(" E:编辑进程  b:阻塞  w:唤醒  t:终止  a:添加日志  e:编辑日志  j/k:选择日志  q/esc:返回")
+	return helpStyle.Render(" E:编辑进程  d:删除进程  b:阻塞  p:等待  w:唤醒  t:终止  a:添加日志  e:编辑日志  j/k:选择日志  q/esc:返回")
 }
 
 func (m Model) errorView() string {
@@ -307,76 +310,144 @@ func (m Model) inputView() string {
 
 	b.WriteString(m.textInput.View())
 	b.WriteString("\n\n")
-	b.WriteString(helpStyle.Render(" enter:确认  esc:取消"))
+
+	// Show different help text for state change (allows empty input)
+	if m.pendingStateChange != nil {
+		b.WriteString(helpStyle.Render(" enter:确认 (备注可选)  esc:取消"))
+	} else if m.inputPrompt == "Search" {
+		b.WriteString(helpStyle.Render(" enter:搜索  esc:取消"))
+	} else {
+		// Log input - multi-line textarea
+		b.WriteString(helpStyle.Render(" Ctrl+Enter:确认  esc:取消"))
+	}
 
 	return b.String()
 }
 
 func (m Model) helpView() string {
+	// All help content as lines
+	lines := []string{
+		titleStyle.Render(" 帮助 "),
+		borderStyle.Render(strings.Repeat("─", 50)),
+		"",
+		titleStyle.Render("列表视图快捷键:"),
+		"  j/k or ↑/↓    导航进程列表",
+		"  1-9           快速跳转到第N项",
+		"  enter         查看进程详情",
+		"  s             新建进程",
+		"  A             显示全部进程",
+		"  r/B/S/T       按状态过滤 (运行/阻塞/等待/终止)",
+		"  /             全文搜索",
+		"  G             全局时间线",
+		"  D             活动统计",
+		"  Y             进程树",
+		"  ?             显示帮助",
+		"  q/ctrl+c      退出程序",
+		"",
+		titleStyle.Render("详情视图快捷键:"),
+		"  E             编辑进程信息 (标题/描述/优先级/父进程)",
+		"  d             删除进程",
+		"  b             阻塞进程 (⏸) - 可选备注",
+		"  p             等待中 (⏹) - 可选备注",
+		"  w             唤醒进程 (▶) - 可选备注",
+		"  t             终止进程 (✓) - 可选备注",
+		"  a             添加日志",
+		"  e             编辑选中的日志",
+		"  j/k           选择日志",
+		"  q/esc/h/←     返回列表",
+		"",
+		titleStyle.Render("创建/编辑进程快捷键:"),
+		"  tab/shift+tab 切换字段",
+		"  Ctrl+Enter    确认创建/编辑",
+		"  enter         选择父进程",
+		"  esc/q         取消",
+		"",
+		titleStyle.Render("选择父进程快捷键:"),
+		"  j/k           导航进程列表",
+		"  enter         选择父进程",
+		"  esc/q         取消",
+		"",
+		titleStyle.Render("搜索视图快捷键:"),
+		"  j/k           导航搜索结果",
+		"  enter         跳转到进程详情",
+		"  /             新搜索",
+		"  q/esc         返回列表",
+		"",
+		titleStyle.Render("时间线视图快捷键:"),
+		"  j/k           导航时间线",
+		"  enter         跳转到进程详情",
+		"  q/esc         返回列表",
+		"",
+		titleStyle.Render("统计视图快捷键:"),
+		"  d             30天统计",
+		"  h/H           7天/90天统计",
+		"  D             365天统计",
+		"  q/esc         返回列表",
+		"",
+		titleStyle.Render("树视图快捷键:"),
+		"  j/k           导航进程树",
+		"  enter         查看进程详情",
+		"  space         展开/折叠",
+		"  q/esc         返回列表",
+		"",
+		titleStyle.Render("状态图标:"),
+		"  ▶             运行中 (running)",
+		"  ⏸             已阻塞 (blocked)",
+		"  ⏹             等待中 (suspended)",
+		"  ✓             已终止 (terminated)",
+		"",
+		titleStyle.Render("优先级图标:"),
+		"  H             高优先级",
+		"  M             中优先级",
+		"  L             低优先级",
+		"",
+		borderStyle.Render(strings.Repeat("─", 50)),
+		helpStyle.Render(" j/k:滚动  esc/?:关闭帮助"),
+	}
+
+	// Calculate visible lines (reserve 2 lines for top/bottom margins)
+	maxLines := 30
+	visibleLines := maxLines
+
+	// Adjust offset if out of bounds
+	if m.helpOffset < 0 {
+		m.helpOffset = 0
+	}
+	if m.helpOffset > len(lines)-visibleLines && len(lines) > visibleLines {
+		m.helpOffset = len(lines) - visibleLines
+	}
+	if m.helpOffset < 0 {
+		m.helpOffset = 0
+	}
+
+	// Calculate visible range
+	start := m.helpOffset
+	end := start + visibleLines
+	if end > len(lines) {
+		end = len(lines)
+	}
+
+	// Build visible output
 	var b strings.Builder
+	for i := start; i < end; i++ {
+		b.WriteString(lines[i] + "\n")
+	}
 
-	b.WriteString(titleStyle.Render(" 帮助 ") + "\n")
-	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
-
-	b.WriteString(titleStyle.Render("列表视图快捷键:") + "\n")
-	b.WriteString("  j/k or ↑/↓    导航进程列表\n")
-	b.WriteString("  1-9           快速跳转到第N项\n")
-	b.WriteString("  enter         查看进程详情\n")
-	b.WriteString("  s             新建进程\n")
-	b.WriteString("  r/B/S/T/A     按状态过滤 (运行/阻塞/暂停/终止/全部)\n")
-	b.WriteString("  /             全文搜索\n")
-	b.WriteString("  G             全局时间线\n")
-	b.WriteString("  D             活动统计\n")
-	b.WriteString("  Y             进程树\n")
-	b.WriteString("  ?             显示帮助\n")
-	b.WriteString("  q/ctrl+c      退出程序\n\n")
-
-	b.WriteString(titleStyle.Render("详情视图快捷键:") + "\n")
-	b.WriteString("  E             编辑进程信息 (标题/描述/优先级)\n")
-	b.WriteString("  b             阻塞进程 (⏸)\n")
-	b.WriteString("  w             唤醒进程 (▶)\n")
-	b.WriteString("  t             终止进程 (✓)\n")
-	b.WriteString("  a             添加日志\n")
-	b.WriteString("  e             编辑选中的日志\n")
-	b.WriteString("  j/k           选择日志\n")
-	b.WriteString("  q/esc/h/←     返回列表\n\n")
-
-	b.WriteString(titleStyle.Render("搜索视图快捷键:") + "\n")
-	b.WriteString("  j/k           导航搜索结果\n")
-	b.WriteString("  enter         跳转到进程详情\n")
-	b.WriteString("  /             新搜索\n")
-	b.WriteString("  q/esc         返回列表\n\n")
-
-	b.WriteString(titleStyle.Render("时间线视图快捷键:") + "\n")
-	b.WriteString("  j/k           导航时间线\n")
-	b.WriteString("  enter         跳转到进程详情\n")
-	b.WriteString("  q/esc         返回列表\n\n")
-
-	b.WriteString(titleStyle.Render("统计视图快捷键:") + "\n")
-	b.WriteString("  d             30天统计\n")
-	b.WriteString("  h/H           7天/90天统计\n")
-	b.WriteString("  D             365天统计\n")
-	b.WriteString("  q/esc         返回列表\n\n")
-
-	b.WriteString(titleStyle.Render("树视图快捷键:") + "\n")
-	b.WriteString("  j/k           导航进程树\n")
-	b.WriteString("  enter         查看进程详情\n")
-	b.WriteString("  space         展开/折叠\n")
-	b.WriteString("  q/esc         返回列表\n\n")
-
-	b.WriteString(titleStyle.Render("状态图标:") + "\n")
-	b.WriteString("  ▶             运行中 (running)\n")
-	b.WriteString("  ⏸             已阻塞 (blocked)\n")
-	b.WriteString("  ⏹             已暂停 (suspended)\n")
-	b.WriteString("  ✓             已终止 (terminated)\n\n")
-
-	b.WriteString(titleStyle.Render("优先级图标:") + "\n")
-	b.WriteString("  H             高优先级\n")
-	b.WriteString("  M             中优先级\n")
-	b.WriteString("  L             低优先级\n\n")
-
-	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
-	b.WriteString(helpStyle.Render(" esc/?:关闭帮助"))
+	// Add scroll indicator if needed
+	if len(lines) > visibleLines {
+		scrollHint := ""
+		if m.helpOffset > 0 && end < len(lines) {
+			scrollHint = helpStyle.Render(" ▲ 更多内容上下滚动 ▼ ")
+		} else if m.helpOffset > 0 {
+			scrollHint = helpStyle.Render(" ▲ 顶部 ")
+		} else if end < len(lines) {
+			scrollHint = helpStyle.Render(" ▼ 更多内容下方 ")
+		}
+		if scrollHint != "" {
+			// Clear line and show hint at bottom
+			b.WriteString("\r" + strings.Repeat(" ", 50) + "\r" + scrollHint + "\n")
+		}
+	}
 
 	return b.String()
 }
@@ -413,12 +484,29 @@ func (m Model) spawnView() string {
 	}
 	b.WriteString(priorityLabel + " " + m.spawnPriority.View() + " (H/M/L)\n\n")
 
+	// Parent field
+	parentLabel := "父进程:"
+	if m.spawnFocusedField == 3 {
+		parentLabel = cursorStyle.Render(parentLabel)
+	}
+	parentStr := "无"
+	if m.selectedParentID != nil {
+		// Find parent title from available parents
+		for _, p := range m.availableParents {
+			if p.ID == *m.selectedParentID {
+				parentStr = fmt.Sprintf("#%d %s", p.ID, p.Title)
+				break
+			}
+		}
+	}
+	b.WriteString(parentLabel + " " + helpStyle.Render(parentStr) + "\n\n")
+
 	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
 	action := "创建"
 	if m.editingProcessID > 0 {
 		action = "保存"
 	}
-	b.WriteString(helpStyle.Render(fmt.Sprintf(" tab:切换字段  enter:%s  esc:取消", action)))
+	b.WriteString(helpStyle.Render(fmt.Sprintf(" tab:切换字段  Ctrl+Enter:%s  esc:取消", action)))
 
 	return b.String()
 }
@@ -659,4 +747,57 @@ func (m Model) getNodeDepth(node *core.ProcessNode, nodes []*core.ProcessNode, d
 		}
 	}
 	return -1
+}
+
+func (m Model) parentSelectView() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render(" 选择父进程 ") + "\n")
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
+
+	if len(m.availableParents) == 0 {
+		b.WriteString(helpStyle.Render("没有可用的父进程。") + "\n")
+	} else {
+		// Show "None" option first
+		cursor := " "
+		if m.parentCursor == -1 {
+			cursor = cursorStyle.Render("►")
+		}
+		selected := ""
+		if m.selectedParentID == nil {
+			selected = " [✓]"
+		}
+		b.WriteString(fmt.Sprintf("%s [无] %s\n\n", cursor, selected))
+
+		// Show available parents
+		for i, parent := range m.availableParents {
+			cursor := " "
+			if i == m.parentCursor {
+				cursor = cursorStyle.Render("►")
+			}
+
+			selected := ""
+			if m.selectedParentID != nil && parent.ID == *m.selectedParentID {
+				selected = " [✓]"
+			}
+
+			// Show status icon
+			statusIcon := "▶"
+			if parent.Status == core.StatusBlocked {
+				statusIcon = "⏸"
+			} else if parent.Status == core.StatusSuspended {
+				statusIcon = "⏹"
+			} else if parent.Status == core.StatusTerminated {
+				statusIcon = "✓"
+			}
+
+			b.WriteString(fmt.Sprintf("%s [#%d] %s %s%s\n",
+				cursor, parent.ID, statusIcon, parent.Title, selected))
+		}
+	}
+
+	b.WriteString("\n" + borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+	b.WriteString(helpStyle.Render(" j/k:导航  enter:选择  esc:取消"))
+
+	return b.String()
 }

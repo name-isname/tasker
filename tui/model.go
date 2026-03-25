@@ -4,6 +4,7 @@ import (
 	"time"
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/textarea"
 	"taskctl/core"
 )
 
@@ -21,6 +22,7 @@ const (
 	ViewTimeline
 	ViewStats
 	ViewTree
+	ViewParentSelect // For selecting parent process
 )
 
 // Model represents the TUI state
@@ -42,21 +44,30 @@ type Model struct {
 	// Error message
 	err error
 
+	// Help page scroll offset
+	helpOffset int
+
 	// Status filter
 	statusFilter core.ProcessStatus
 	filtering     bool
 
 	// Text input
-	textInput     textinput.Model
-	inputPrompt   string
-	editingLogID  uint // 0 for new log, >0 for editing existing log
+	textInput          textarea.Model
+	inputPrompt        string
+	editingLogID       uint // 0 for new log, >0 for editing existing log
+	pendingStateChange *core.ProcessStatus // Pending state change with note
 
 	// Spawn/Edit form fields (shared between spawn and edit)
 	spawnTitle       textinput.Model
-	spawnDesc        textinput.Model
+	spawnDesc        textarea.Model
 	spawnPriority    textinput.Model
-	spawnFocusedField int // 0=title, 1=desc, 2=priority
+	spawnFocusedField int // 0=title, 1=desc, 2=priority, 3=parent
 	editingProcessID  uint // 0 for new process, >0 for editing existing process
+
+	// Parent process selection
+	availableParents []core.Process // List of processes that can be parents
+	parentCursor     int            // Cursor for parent selection
+	selectedParentID *uint          // Currently selected parent ID (nil = no parent)
 
 	// Log selection in detail view
 	logCursor int // Index of selected log in processLogs
@@ -96,15 +107,15 @@ type (
 
 // InitialModel creates the initial TUI model
 func InitialModel() Model {
-	ti := textinput.New()
-	ti.Placeholder = "Enter log content..."
+	ti := textarea.New()
+	ti.Placeholder = "输入日志内容（支持多行，Cmd+Enter确认）..."
 	ti.Focus()
 
 	titleInput := textinput.New()
-	titleInput.Placeholder = "Process title..."
+	titleInput.Placeholder = "进程标题..."
 
-	descInput := textinput.New()
-	descInput.Placeholder = "Description (optional)..."
+	descInput := textarea.New()
+	descInput.Placeholder = "描述（可选，支持多行）..."
 
 	priorityInput := textinput.New()
 	priorityInput.Placeholder = "M"
@@ -114,7 +125,7 @@ func InitialModel() Model {
 		viewMode:          ViewList,
 		processes:         []core.Process{},
 		selectedIdx:       0,
-		statusFilter:      core.StatusRunning,
+		statusFilter:      "", // Show all by default
 		textInput:         ti,
 		spawnTitle:        titleInput,
 		spawnDesc:         descInput,
@@ -122,6 +133,9 @@ func InitialModel() Model {
 		spawnFocusedField: 0,
 		treeExpanded:      make(map[uint]bool),
 		statsDays:         30,
+		availableParents:  []core.Process{},
+		parentCursor:      -1,
+		selectedParentID:  nil,
 	}
 }
 
@@ -248,5 +262,21 @@ func loadTree() tea.Cmd {
 			return errMsg{err}
 		}
 		return TreeLoadedMsg{Nodes: nodes}
+	}
+}
+
+// ParentsLoadedMsg signals that available parents have been loaded
+type ParentsLoadedMsg struct {
+	Parents []core.Process
+}
+
+// loadAvailableParents returns a command to load available parent processes
+func loadAvailableParents() tea.Cmd {
+	return func() tea.Msg {
+		parents, err := core.ListProcesses(nil)
+		if err != nil {
+			return errMsg{err}
+		}
+		return ParentsLoadedMsg{Parents: parents}
 	}
 }
