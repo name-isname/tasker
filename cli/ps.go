@@ -9,16 +9,28 @@ import (
 
 var (
 	jsonOutput bool
-	listStatus string
+	psStatus   string
+	psTree     bool
 )
 
-var listCmd = &cobra.Command{
-	Use:   "list",
+var psCmd = &cobra.Command{
+	Use:   "ps",
 	Short: "List all processes",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Tree mode
+		if psTree {
+			treeOutput, err := core.FormatFullTree()
+			if err != nil {
+				return err
+			}
+			fmt.Print(treeOutput)
+			return nil
+		}
+
+		// List mode
 		var status *core.ProcessStatus
-		if listStatus != "" {
-			s := core.ProcessStatus(listStatus)
+		if psStatus != "" && psStatus != "all" {
+			s := core.ProcessStatus(psStatus)
 			status = &s
 		}
 
@@ -82,7 +94,8 @@ func getPriorityIcon(priority core.ProcessPriority) string {
 }
 
 func init() {
-	rootCmd.AddCommand(listCmd)
-	listCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
-	listCmd.Flags().StringVarP(&listStatus, "status", "s", "", "Filter by status (running, blocked, suspended, terminated)")
+	rootCmd.AddCommand(psCmd)
+	psCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
+	psCmd.Flags().StringVarP(&psStatus, "status", "s", "running", "Filter by status (use 'all' to show everything)")
+	psCmd.Flags().BoolVarP(&psTree, "tree", "t", false, "Display as hierarchical tree")
 }

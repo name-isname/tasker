@@ -7,8 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var searchCmd = &cobra.Command{
-	Use:   "search <keyword>",
+var grepCmd = &cobra.Command{
+	Use:   "grep <keyword>",
 	Short: "Search across processes and logs",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -24,7 +24,7 @@ var searchCmd = &cobra.Command{
 			return nil
 		}
 
-		fmt.Printf("\n🔍 Found %d results for '%s':\n\n", len(results), keyword)
+		fmt.Printf("\nFound %d results for '%s':\n\n", len(results), keyword)
 
 		for _, result := range results {
 			if result.Type == "process" {
@@ -68,5 +68,5 @@ var searchCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(searchCmd)
+	rootCmd.AddCommand(grepCmd)
 }
