@@ -7,7 +7,7 @@ import (
 
 // Model represents the TUI state
 type Model struct {
-	Tasks     []core.Task
+	Processes []core.Process
 	Selected  int
 	Quitting  bool
 }

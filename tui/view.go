@@ -3,11 +3,16 @@ package tui
 import (
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"taskctl/core"
 )
 
 var (
 	cursorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("212"))
 	helpStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Faint(true)
+	statusStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("86"))  // running
+	blockedStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("226")) // blocked
+	suspendedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241")) // suspended
+	doneStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("114")) // terminated
 )
 
 // Update handles messages and updates the model
@@ -23,7 +28,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Selected--
 			}
 		case "down", "j":
-			if m.Selected < len(m.Tasks)-1 {
+			if m.Selected < len(m.Processes)-1 {
 				m.Selected++
 			}
 		}
@@ -37,18 +42,43 @@ func (m Model) View() string {
 		return "Goodbye!\n"
 	}
 
-	s := "Task List\n\n"
+	s := "Process List\n\n"
 
-	for i, task := range m.Tasks {
+	for i, process := range m.Processes {
 		cursor := " "
 		if m.Selected == i {
 			cursor = ">"
 		}
-		status := " "
-		if task.Completed {
-			status = "x"
+
+		// Style based on status
+		var statusStyle lipgloss.Style
+		var statusIcon string
+		switch process.Status {
+		case core.StatusRunning:
+			statusStyle = statusStyle
+			statusIcon = "▶"
+		case core.StatusBlocked:
+			statusStyle = blockedStyle
+			statusIcon = "⏸"
+		case core.StatusSuspended:
+			statusStyle = suspendedStyle
+			statusIcon = "⏹"
+		case core.StatusTerminated:
+			statusStyle = doneStyle
+			statusIcon = "✓"
+		default:
+			statusStyle = helpStyle
+			statusIcon = "?"
 		}
-		s += cursorStyle.Render(cursor) + " [" + status + "] " + task.Title + "\n"
+
+		line := cursorStyle.Render(cursor) + " " +
+			statusStyle.Render(statusIcon) + " " +
+			process.Title
+		s += line + "\n"
+
+		if m.Selected == i && process.Description != "" {
+			s += helpStyle.Render("    └─ "+process.Description) + "\n"
+		}
 	}
 
 	s += "\n" + helpStyle.Render("Press q to quit")
