@@ -12,7 +12,21 @@ import (
 var inspectCmd = &cobra.Command{
 	Use:   "inspect <pid>",
 	Short: "Show detailed information about a process",
-	Args:  cobra.ExactArgs(1),
+	Long: `Display complete metadata for a single process including:
+- Title and description
+- Current status and priority
+- Parent/child relationships
+- Creation and modification timestamps
+- Associated log count
+
+Similar to 'docker inspect' for containers.`,
+	Example: `  # Inspect a process
+  taskctl inspect 1
+
+  # Get process details as JSON
+  taskctl inspect 1 --json`,
+
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		id, err := strconv.ParseUint(args[0], 10, 32)
 		if err != nil {

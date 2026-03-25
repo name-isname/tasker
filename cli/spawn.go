@@ -7,15 +7,28 @@ import (
 )
 
 var (
-	spawnDesc    string
-	spawnParent  uint
+	spawnDesc     string
+	spawnParent   uint
 	spawnPriority string
 )
 
 var spawnCmd = &cobra.Command{
 	Use:   "spawn <title>",
 	Short: "Create a new process",
-	Args:  cobra.ExactArgs(1),
+	Long:  `Create a new process with an optional title, description, parent process, and priority.
+
+Processes are modeled as OS processes with states: running, blocked, suspended, terminated.
+Each process can have child sub-processes, creating an infinite hierarchy.`,
+	Example: `  # Create a simple process
+  taskctl spawn "Fix login bug"
+
+  # Create with description and high priority
+  taskctl spawn "Deploy to production" -d "Hotfix for critical issue" -P high
+
+  # Create as child of another process
+  taskctl spawn "Design database schema" -p 1`,
+
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		priority := core.PriorityMedium
 		if spawnPriority != "" {
@@ -38,7 +51,7 @@ var spawnCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(spawnCmd)
-	spawnCmd.Flags().StringVarP(&spawnDesc, "desc", "d", "", "Process description")
-	spawnCmd.Flags().UintVarP(&spawnParent, "parent", "p", 0, "Parent process ID")
-	spawnCmd.Flags().StringVarP(&spawnPriority, "priority", "P", "medium", "Priority (low, medium, high)")
+	spawnCmd.Flags().StringVarP(&spawnDesc, "desc", "D", "", "Process description (supports Markdown)")
+	spawnCmd.Flags().UintVarP(&spawnParent, "parent", "p", 0, "Parent process ID (creates sub-process)")
+	spawnCmd.Flags().StringVarP(&spawnPriority, "priority", "P", "medium", "Priority level: low, medium, high")
 }

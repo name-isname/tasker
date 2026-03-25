@@ -16,6 +16,33 @@ var (
 var psCmd = &cobra.Command{
 	Use:   "ps",
 	Short: "List all processes",
+	Long: `List processes with optional filtering by status.
+
+Status icons:
+  ▶  running    - Currently active
+  ⏸  blocked    - Waiting on something
+  ⏹  suspended  - Paused
+  ✓  terminated - Completed
+
+Priority icons:
+  H  high
+  M  medium
+  L  low`,
+	Example: `  # List all running processes
+  taskctl ps
+
+  # Show all processes regardless of status
+  taskctl ps -s all
+
+  # Display as hierarchical tree
+  taskctl ps -t
+
+  # Show only blocked processes
+  taskctl ps -s blocked
+
+  # Output as JSON for AI agents
+  taskctl ps --json`,
+
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Tree mode
 		if psTree {
@@ -96,6 +123,6 @@ func getPriorityIcon(priority core.ProcessPriority) string {
 func init() {
 	rootCmd.AddCommand(psCmd)
 	psCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
-	psCmd.Flags().StringVarP(&psStatus, "status", "s", "running", "Filter by status (use 'all' to show everything)")
+	psCmd.Flags().StringVarP(&psStatus, "status", "s", "running", "Filter by status (running, blocked, suspended, terminated, all)")
 	psCmd.Flags().BoolVarP(&psTree, "tree", "t", false, "Display as hierarchical tree")
 }

@@ -64,7 +64,7 @@ var updateCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(updateCmd)
 	updateCmd.Flags().StringVarP(&updateTitle, "title", "t", "", "New title")
-	updateCmd.Flags().StringVarP(&updateDesc, "desc", "d", "", "New description")
+	updateCmd.Flags().StringVarP(&updateDesc, "desc", "D", "", "New description")
 	updateCmd.Flags().StringVar(&updatePriority, "priority", "", "New priority (low, medium, high)")
 	updateCmd.Flags().Float64Var(&updateRanking, "ranking", 0, "New ranking weight")
 }
