@@ -15,6 +15,8 @@ web/     → Gin API handlers that call core functions
 
 **Single Binary Distribution**: The Vue frontend is built to `web/frontend/dist` and embedded into the Go binary via `//go:embed` in `web/embed.go`. This allows distribution as a single executable.
 
+**Database Initialization**: The Cobra root command has a `PersistentPreRunE` hook that automatically initializes the SQLite database and runs migrations before ANY subcommand executes. The DB path is configurable via `--db` flag (default: `./taskctl.db`).
+
 ## Build Commands
 
 ```bash
@@ -39,6 +41,16 @@ Cross-platform builds: `make build-linux`, `make build-mac`, `make build-windows
 ## Frontend
 
 Vue 3 + TypeScript + Vite + TailwindCSS. The frontend build output must be in `web/frontend/dist` for Go embedding.
+
+## Implementation Status
+
+**Completed**: Core CRUD, CLI commands (add, list, complete, delete), basic project scaffolding
+
+**Incomplete / TODO**:
+- `tui/model.go` and `tui/view.go` - Bubble Tea model and view are skeleton only
+- `cli/tui.go` - TUI entry is a stub, needs `tea.NewProgram()` implementation
+- `web/server.go` - `completeTask()` and `deleteTask()` handlers are stubs (return fake success)
+- Frontend UI components - still using Vite default template, needs task management UI
 
 ## Key Files
 
