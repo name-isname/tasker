@@ -1082,7 +1082,16 @@ func (m Model) handleDeleteConfirmKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					return errMsg{err}
 				}
 				// Refresh processes with current filter
-				return refreshProcessesWithFilter(currentFilter)()
+				var processes []core.Process
+				if currentFilter == "" {
+					processes, err = core.ListProcesses(nil)
+				} else {
+					processes, err = core.ListProcesses(&currentFilter)
+				}
+				if err != nil {
+					return errMsg{err}
+				}
+				return ProcessesLoadedMsg{Processes: processes}
 			}
 		} else if m.confirmDeleteType == "log" && m.currentProcess != nil {
 			// Clear confirmation state and switch to detail view immediately
