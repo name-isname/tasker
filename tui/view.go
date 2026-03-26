@@ -149,7 +149,19 @@ func (m Model) renderProcessItem(idx int, process core.Process) string {
 		var descContent string
 		if m.markdownEnabled {
 			// Use markdown rendering with limited width for list view
-			descContent = RenderMarkdown(process.Description, 42)
+			mdRendered := RenderMarkdown(process.Description, 42)
+			// Add proper indentation to each line
+			mdLines := strings.Split(mdRendered, "\n")
+			for i, mdLine := range mdLines {
+				if mdLine == "" {
+					continue
+				}
+				if i == 0 {
+					descContent = "    └─ " + mdLine
+				} else {
+					descContent += "\n      " + mdLine
+				}
+			}
 		} else {
 			// Fallback to plain text with basic formatting
 			desc := process.Description

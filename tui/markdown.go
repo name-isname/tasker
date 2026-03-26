@@ -74,8 +74,8 @@ func renderInlineMarkdown(text string, width int) string {
 		return renderQuote(text, width)
 	}
 
-	// Check for list
-	if strings.HasPrefix(text, "-") || strings.HasPrefix(text, "*") {
+	// Check for list (must be "-" or "*" followed by space)
+	if strings.HasPrefix(text, "- ") || strings.HasPrefix(text, "* ") {
 		return renderListItem(text, width)
 	}
 
