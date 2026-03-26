@@ -579,7 +579,7 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.lastKey = msg.String()
 
 	switch msg.String() {
-	case "esc", "q":
+	case "esc":
 		// Cancel - return to appropriate view
 		if m.editingProcessID > 0 {
 			// Was editing, return to detail view
@@ -707,7 +707,7 @@ func (m Model) submitSpawnForm() (tea.Model, tea.Cmd) {
 	if m.editingProcessID > 0 {
 		// Update existing process
 		return m, func() tea.Msg {
-			err := core.UpdateProcess(m.editingProcessID, &title, &desc, &priority)
+			err := core.UpdateProcess(m.editingProcessID, &title, &desc, &priority, m.selectedParentID)
 			if err != nil {
 				return errMsg{err}
 			}

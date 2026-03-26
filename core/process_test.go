@@ -150,7 +150,7 @@ func TestUpdateProcess(t *testing.T) {
 	newDesc := "New Description"
 	newPriority := PriorityHigh
 
-	err := UpdateProcess(process.ID, &newTitle, &newDesc, &newPriority)
+	err := UpdateProcess(process.ID, &newTitle, &newDesc, &newPriority, nil)
 	if err != nil {
 		t.Fatalf("UpdateProcess failed: %v", err)
 	}

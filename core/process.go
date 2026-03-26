@@ -63,7 +63,7 @@ func GetChildProcesses(parentID uint) ([]Process, error) {
 }
 
 // UpdateProcess updates process fields
-func UpdateProcess(id uint, title, description *string, priority *ProcessPriority) error {
+func UpdateProcess(id uint, title, description *string, priority *ProcessPriority, parentID *uint) error {
 	updates := make(map[string]interface{})
 
 	if title != nil {
@@ -74,6 +74,9 @@ func UpdateProcess(id uint, title, description *string, priority *ProcessPriorit
 	}
 	if priority != nil {
 		updates["priority"] = *priority
+	}
+	if parentID != nil {
+		updates["parent_id"] = *parentID
 	}
 
 	if len(updates) == 0 {

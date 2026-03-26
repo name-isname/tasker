@@ -12,6 +12,7 @@ var (
 	updateDesc      string
 	updatePriority  string
 	updateRanking   float64
+	updateParent    string
 )
 
 var updateCmd = &cobra.Command{
@@ -26,13 +27,14 @@ var updateCmd = &cobra.Command{
 
 		// Check if at least one flag is provided
 		cmd.Flags()
-		if updateTitle == "" && updateDesc == "" && updatePriority == "" && updateRanking == 0 {
+		if updateTitle == "" && updateDesc == "" && updatePriority == "" && updateRanking == 0 && updateParent == "" {
 			return fmt.Errorf("at least one attribute must be specified")
 		}
 
 		var titlePtr *string
 		var descPtr *string
 		var priorityPtr *core.ProcessPriority
+		var parentIDPtr *uint
 
 		if cmd.Flags().Changed("title") {
 			titlePtr = &updateTitle
@@ -44,6 +46,14 @@ var updateCmd = &cobra.Command{
 			p := core.ProcessPriority(updatePriority)
 			priorityPtr = &p
 		}
+		if cmd.Flags().Changed("parent") {
+			parentID, err := strconv.ParseUint(updateParent, 10, 32)
+			if err != nil {
+				return fmt.Errorf("invalid parent ID: %w", err)
+			}
+			pid := uint(parentID)
+			parentIDPtr = &pid
+		}
 
 		// Handle ranking separately
 		if cmd.Flags().Changed("ranking") {
@@ -52,7 +62,7 @@ var updateCmd = &cobra.Command{
 			}
 		}
 
-		if err := core.UpdateProcess(uint(id), titlePtr, descPtr, priorityPtr); err != nil {
+		if err := core.UpdateProcess(uint(id), titlePtr, descPtr, priorityPtr, parentIDPtr); err != nil {
 			return err
 		}
 
@@ -68,4 +78,5 @@ func init() {
 	updateCmd.Flags().StringVarP(&updateDesc, "desc", "D", "", "New description")
 	updateCmd.Flags().StringVar(&updatePriority, "priority", "", "New priority (low, medium, high)")
 	updateCmd.Flags().Float64Var(&updateRanking, "ranking", 0, "New ranking weight")
+	updateCmd.Flags().StringVar(&updateParent, "parent", "", "Parent process ID")
 }
