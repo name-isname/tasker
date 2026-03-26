@@ -1,11 +1,12 @@
 package tui
 
 import (
-	"time"
-	"github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/textarea"
 	"taskctl/core"
+	"time"
+
+	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // ViewMode represents the current view state
@@ -22,7 +23,7 @@ const (
 	ViewTimeline
 	ViewStats
 	ViewTree
-	ViewParentSelect // For selecting parent process
+	ViewParentSelect  // For selecting parent process
 	ViewDeleteConfirm // For delete confirmation
 )
 
@@ -50,19 +51,19 @@ type Model struct {
 
 	// Status filter
 	statusFilter core.ProcessStatus
-	filtering     bool
+	filtering    bool
 
 	// Text input
 	textInput          textarea.Model
 	inputPrompt        string
-	editingLogID       uint // 0 for new log, >0 for editing existing log
+	editingLogID       uint                // 0 for new log, >0 for editing existing log
 	pendingStateChange *core.ProcessStatus // Pending state change with note
 
 	// Spawn/Edit form fields (shared between spawn and edit)
-	spawnTitle       textinput.Model
-	spawnDesc        textarea.Model
-	spawnPriority    textinput.Model
-	spawnFocusedField int // 0=title, 1=desc, 2=priority, 3=parent
+	spawnTitle        textinput.Model
+	spawnDesc         textarea.Model
+	spawnPriority     textinput.Model
+	spawnFocusedField int  // 0=title, 1=desc, 2=priority, 3=parent
 	editingProcessID  uint // 0 for new process, >0 for editing existing process
 
 	// Parent process selection
@@ -75,37 +76,40 @@ type Model struct {
 	logCursor int // Index of selected log in processLogs
 
 	// Search view state
-	searchKeyword  string
-	searchResults  []core.SearchResult
-	searchCursor   int
+	searchKeyword string
+	searchResults []core.SearchResult
+	searchCursor  int
 
 	// Timeline view state
 	timelineEntries []core.TimelineEntry
 	timelineCursor  int
 
 	// Stats view state
-	statsDays      int
-	statsData      []core.ActivityStat
+	statsDays int
+	statsData []core.ActivityStat
 
 	// Tree view state
-	treeNodes      []*core.ProcessNode
-	treeCursor     int
-	treeExpanded   map[uint]bool // Track expanded nodes
+	treeNodes    []*core.ProcessNode
+	treeCursor   int
+	treeExpanded map[uint]bool // Track expanded nodes
 
 	// Delete confirmation state
 	confirmDeleteType string // "process" or "log"
 	confirmDeleteID   uint   // ID of item to delete
 	confirmDeleteName string // Name/title of item to delete
+
+	// Debug: show last pressed key
+	lastKey string
 }
 
 // Messages
 type (
-	TickMsg      time.Time
-	RefreshMsg   struct{}
+	TickMsg       time.Time
+	RefreshMsg    struct{}
 	ShowDetailMsg struct {
 		ProcessID uint
 	}
-	BackToListMsg struct{}
+	BackToListMsg   struct{}
 	StatusChangeMsg struct {
 		ProcessID uint
 		Status    core.ProcessStatus
@@ -199,8 +203,8 @@ type ProcessesLoadedMsg struct {
 
 // SearchResultsLoadedMsg signals that search results have been loaded
 type SearchResultsLoadedMsg struct {
-	Keyword  string
-	Results  []core.SearchResult
+	Keyword string
+	Results []core.SearchResult
 }
 
 // TimelineLoadedMsg signals that timeline has been loaded
@@ -210,7 +214,7 @@ type TimelineLoadedMsg struct {
 
 // StatsLoadedMsg signals that stats have been loaded
 type StatsLoadedMsg struct {
-	Days int
+	Days  int
 	Stats []core.ActivityStat
 }
 

@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"taskctl/core"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 // View renders the TUI
@@ -144,12 +145,20 @@ func (m Model) renderProcessItem(idx int, process core.Process) string {
 	)
 
 	if idx == m.cursor && process.Description != "" {
-		// Truncate description if too long
+		// Handle multi-line description with consistent indentation
 		desc := process.Description
-		if len(desc) > 40 {
-			desc = desc[:37] + "..."
+		lines := strings.Split(desc, "\n")
+		for i, descLine := range lines {
+			if len(descLine) > 40 {
+				descLine = descLine[:37] + "..."
+			}
+			if i == 0 {
+				line += "\n" + helpStyle.Render("    └─ "+descLine)
+			} else {
+				// For subsequent lines, maintain consistent indentation (align with content after └─)
+				line += "\n" + helpStyle.Render("      "+descLine)
+			}
 		}
-		line += "\n" + helpStyle.Render("    └─ "+desc)
 	}
 
 	return line + "\n"
@@ -314,14 +323,19 @@ func (m Model) inputView() string {
 	b.WriteString(m.textInput.View())
 	b.WriteString("\n\n")
 
+	// Debug: show last key pressed
+	if m.lastKey != "" {
+		b.WriteString(helpStyle.Render(fmt.Sprintf("[DEBUG] 最后按键: %s", m.lastKey)) + "\n")
+	}
+
 	// Show different help text for state change (allows empty input)
 	if m.pendingStateChange != nil {
 		b.WriteString(helpStyle.Render(" enter:确认 (备注可选)  esc:取消"))
 	} else if m.inputPrompt == "Search" {
 		b.WriteString(helpStyle.Render(" enter:搜索  esc:取消"))
 	} else {
-		// Log input - multi-line textarea
-		b.WriteString(helpStyle.Render(" Ctrl+Enter:确认  esc:取消"))
+		// Log input - multi-line textarea, show Ctrl+J as macOS alternative
+		b.WriteString(helpStyle.Render(" Ctrl+J:确认 (macOS)  esc:取消"))
 	}
 
 	return b.String()
@@ -362,7 +376,7 @@ func (m Model) helpView() string {
 		"",
 		titleStyle.Render("创建/编辑进程快捷键:"),
 		"  tab/shift+tab 切换字段",
-		"  Ctrl+Enter    确认创建/编辑",
+		"  Ctrl+J        确认创建/编辑 (macOS)",
 		"  enter         选择父进程",
 		"  esc/q         取消",
 		"",
@@ -475,7 +489,7 @@ func (m Model) spawnView() string {
 	if m.spawnFocusedField == 1 {
 		descLabel = cursorStyle.Render(descLabel)
 	}
-	b.WriteString(descLabel + " " + m.spawnDesc.View() + "\n\n")
+	b.WriteString(descLabel + "\n" + m.spawnDesc.View() + "\n\n")
 
 	// Priority field
 	priorityLabel := "优先级:"
@@ -502,11 +516,17 @@ func (m Model) spawnView() string {
 	b.WriteString(parentLabel + " " + helpStyle.Render(parentStr) + "\n\n")
 
 	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+
+	// Debug: show last key pressed
+	if m.lastKey != "" {
+		b.WriteString(helpStyle.Render(fmt.Sprintf("[DEBUG] 最后按键: %s", m.lastKey)) + "\n")
+	}
+
 	action := "创建"
 	if m.editingProcessID > 0 {
 		action = "保存"
 	}
-	b.WriteString(helpStyle.Render(fmt.Sprintf(" tab:切换字段  Ctrl+Enter:%s  esc:取消", action)))
+	b.WriteString(helpStyle.Render(fmt.Sprintf(" tab:切换字段  Ctrl+J:%s (macOS)  esc:取消", action)))
 
 	return b.String()
 }

@@ -49,6 +49,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cursor = 0
 			m.viewportOffset = 0
 		}
+		// Return to list view after loading processes
+		m.viewMode = ViewList
 		return m, nil
 
 	case ShowDetailMsg:
@@ -105,6 +107,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Debug: record last pressed key (excluding basic typing)
+	if msg.Type != tea.KeyRunes {
+		m.lastKey = msg.String()
+	}
 	switch m.viewMode {
 	case ViewList:
 		return m.handleListKeyMsg(msg)
@@ -446,9 +452,12 @@ func getViewportHeight() int {
 }
 
 func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Debug: record key for input view
+	m.lastKey = msg.String()
+
 	switch msg.String() {
-	case "ctrl+enter":
-		// Only log add/edit uses Ctrl+Enter to submit
+	case "ctrl+enter", "ctrl+j":
+		// Ctrl+Enter or Ctrl+J (macOS compatible) to submit log
 		if m.currentProcess != nil && m.pendingStateChange == nil {
 			input := m.textInput.Value()
 			if input == "" {
@@ -566,8 +575,11 @@ func (m Model) handleHelpKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Debug: record key for spawn view
+	m.lastKey = msg.String()
+
 	switch msg.String() {
-	case "esc", "q":
+	case "esc":
 		// Cancel - return to appropriate view
 		if m.editingProcessID > 0 {
 			// Was editing, return to detail view
@@ -588,8 +600,8 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.viewMode = ViewList
 		return m, nil
 
-	case "ctrl+enter":
-		// Ctrl+Enter submits the form
+	case "ctrl+enter", "ctrl+j":
+		// Ctrl+Enter or Ctrl+J (macOS compatible) submits the form
 		return m.submitSpawnForm()
 
 	case "enter":
@@ -1028,8 +1040,14 @@ func (m Model) handleDeleteConfirmKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "y", "Y":
 		// Confirm deletion
 		if m.confirmDeleteType == "process" {
+			// Clear confirmation state and switch to list view immediately
+			deleteID := m.confirmDeleteID
+			m.confirmDeleteType = ""
+			m.confirmDeleteID = 0
+			m.confirmDeleteName = ""
+			m.viewMode = ViewList
 			return m, func() tea.Msg {
-				err := core.DeleteProcess(m.confirmDeleteID)
+				err := core.DeleteProcess(deleteID)
 				if err != nil {
 					return errMsg{err}
 				}
@@ -1041,13 +1059,20 @@ func (m Model) handleDeleteConfirmKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return ProcessesLoadedMsg{Processes: processes}
 			}
 		} else if m.confirmDeleteType == "log" && m.currentProcess != nil {
+			// Clear confirmation state and switch to detail view immediately
+			deleteID := m.confirmDeleteID
+			processID := m.currentProcess.ID
+			m.confirmDeleteType = ""
+			m.confirmDeleteID = 0
+			m.confirmDeleteName = ""
+			m.viewMode = ViewDetail
 			return m, func() tea.Msg {
-				err := core.DeleteLog(m.confirmDeleteID)
+				err := core.DeleteLog(deleteID)
 				if err != nil {
 					return errMsg{err}
 				}
 				// Refresh process detail
-				logs, err := core.GetLogs(m.currentProcess.ID)
+				logs, err := core.GetLogs(processID)
 				if err != nil {
 					return errMsg{err}
 				}
