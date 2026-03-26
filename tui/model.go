@@ -100,6 +100,10 @@ type Model struct {
 
 	// Debug: show last pressed key
 	lastKey string
+
+	// Markdown rendering state
+	markdownEnabled     bool // Toggle markdown rendering on/off
+	viewingRawMarkdown  bool // Temporarily view raw markdown text
 }
 
 // Messages
@@ -147,6 +151,7 @@ func InitialModel() Model {
 		availableParents:  []core.Process{},
 		parentCursor:      -1,
 		selectedParentID:  nil,
+		markdownEnabled:   true, // Enable markdown by default
 	}
 }
 

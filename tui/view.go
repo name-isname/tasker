@@ -243,7 +243,13 @@ func (m Model) detailView() string {
 
 	if m.currentProcess.Description != "" {
 		b.WriteString("\n描述:\n")
-		b.WriteString(helpStyle.Render("  "+m.currentProcess.Description) + "\n")
+		var descContent string
+		if m.markdownEnabled {
+			descContent = RenderMarkdown(m.currentProcess.Description, 46)
+		} else {
+			descContent = "  " + m.currentProcess.Description
+		}
+		b.WriteString(descContent + "\n")
 	}
 
 	// Logs
@@ -270,11 +276,19 @@ func (m Model) detailView() string {
 				cursor = " "
 			}
 
+			// Render log content with or without markdown
+			var logContent string
+			if m.markdownEnabled {
+				logContent = RenderMarkdown(log.Content, 35)
+			} else {
+				logContent = log.Content
+			}
+
 			b.WriteString(fmt.Sprintf(" %s [%s] %s %s\n",
 				cursor,
 				helpStyle.Render(timestamp),
 				logStyle.Render(icon),
-				log.Content))
+				logContent))
 		}
 	}
 
@@ -287,7 +301,11 @@ func (m Model) detailView() string {
 }
 
 func (m Model) renderDetailStatusBar() string {
-	return helpStyle.Render(" E:编辑进程  b:阻塞  p:等待  w:唤醒  t:终止  a:添加日志  e:编辑日志  x:删除日志  j/k:选择日志  q/esc:返回")
+	markdownStatus := "开"
+	if !m.markdownEnabled {
+		markdownStatus = "关"
+	}
+	return helpStyle.Render(fmt.Sprintf(" E:编辑  b/p/w/t:状态  a:添加  e:编辑  x:删除  m:Markdown(%s)  j/k:选择  q:返回", markdownStatus))
 }
 
 func (m Model) errorView() string {
@@ -408,6 +426,7 @@ func (m Model) helpView() string {
 		"  a             添加日志",
 		"  e             编辑选中的日志",
 		"  x             删除选中的日志 (需确认)",
+		"  m             切换 Markdown 渲染",
 		"  j/k           选择日志",
 		"  q/esc/h/←     返回列表",
 		"",
@@ -455,6 +474,17 @@ func (m Model) helpView() string {
 		"  H             高优先级",
 		"  M             中优先级",
 		"  L             低优先级",
+		"",
+		titleStyle.Render("Markdown 语法支持:"),
+		"  **bold**      粗体文本",
+		"  *italic*      斜体文本",
+		"  `code`        行内代码",
+		"  ```block```   代码块",
+		"  # Header      一级标题",
+		"  ## Header     二级标题",
+		"  - item        列表项",
+		"  > quote       引用文本",
+		"  [text](url)   链接",
 		"",
 		borderStyle.Render(strings.Repeat("─", 50)),
 		helpStyle.Render(" j/k:滚动  esc/?:关闭帮助"),

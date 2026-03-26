@@ -30,6 +30,16 @@ var (
 
 	// Warning style
 	warningStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true) // red bold
+
+	// Markdown styles
+	mdBoldStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("228")).Bold(true)       // bold - yellow
+	mdItalicStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("228")).Underline(true)  // italic - yellow underline
+	mdCodeStyle      = lipgloss.NewStyle().Background(lipgloss.Color("235")).Foreground(lipgloss.Color("252")) // inline code
+	mdHeader1Style   = lipgloss.NewStyle().Foreground(lipgloss.Color("86")).Bold(true)        // H1 - green
+	mdHeader2Style   = lipgloss.NewStyle().Foreground(lipgloss.Color("80")).Bold(true)        // H2 - cyan
+	mdHeader3Style   = lipgloss.NewStyle().Foreground(lipgloss.Color("33")).Bold(true)        // H3 - blue
+	mdQuoteStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))                   // quote - gray
+	mdLinkStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("117")).Underline(true)  // link - cyan underline
 )
 
 // Update handles messages and updates the model
@@ -409,6 +419,16 @@ func (m Model) handleDetailKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.logCursor > 0 {
 			m.logCursor--
 		}
+		return m, nil
+
+	case "m":
+		// Toggle markdown rendering
+		m.markdownEnabled = !m.markdownEnabled
+		return m, nil
+
+	case "c":
+		// Copy log content to clipboard (placeholder for future implementation)
+		// TODO: Implement clipboard functionality using atotto/clipboard
 		return m, nil
 	}
 
