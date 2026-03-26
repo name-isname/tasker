@@ -378,7 +378,7 @@ func (m Model) helpView() string {
 		"  tab/shift+tab 切换字段",
 		"  Ctrl+J        确认创建/编辑 (macOS)",
 		"  enter         选择父进程",
-		"  esc/q         取消",
+		"  esc           取消",
 		"",
 		titleStyle.Render("选择父进程快捷键:"),
 		"  j/k           导航进程列表",
