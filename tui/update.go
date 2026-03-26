@@ -579,7 +579,7 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.lastKey = msg.String()
 
 	switch msg.String() {
-	case "esc":
+	case "esc", "q":
 		// Cancel - return to appropriate view
 		if m.editingProcessID > 0 {
 			// Was editing, return to detail view
