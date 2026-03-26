@@ -263,6 +263,11 @@ func (m Model) handleListKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.viewMode = ViewDeleteConfirm
 		}
 		return m, nil
+
+	case "m":
+		// Toggle markdown rendering
+		m.markdownEnabled = !m.markdownEnabled
+		return m, nil
 	}
 
 	return m, nil
@@ -726,22 +731,26 @@ func (m Model) submitSpawnForm() (tea.Model, tea.Cmd) {
 
 	if m.editingProcessID > 0 {
 		// Update existing process
-		return m, func() tea.Msg {
+		return m, func() tea.Cmd {
 			err := core.UpdateProcess(m.editingProcessID, &title, &desc, &priority, m.selectedParentID)
 			if err != nil {
-				return errMsg{err}
+				return func() tea.Msg { return errMsg{err} }
 			}
 			// Refresh process detail
 			process, err := core.GetProcess(m.editingProcessID)
 			if err != nil {
-				return errMsg{err}
+				return func() tea.Msg { return errMsg{err} }
 			}
 			logs, err := core.GetLogs(m.editingProcessID)
 			if err != nil {
-				return errMsg{err}
+				return func() tea.Msg { return errMsg{err} }
 			}
-			return ProcessDetailLoadedMsg{Process: process, Logs: logs}
-		}
+			// Also refresh the process list to show updated info
+			return tea.Batch(
+				func() tea.Msg { return ProcessDetailLoadedMsg{Process: process, Logs: logs} },
+				refreshProcessesWithFilter(m.statusFilter),
+			)
+		}()
 	}
 
 	// Create new process

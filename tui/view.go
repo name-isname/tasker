@@ -145,20 +145,27 @@ func (m Model) renderProcessItem(idx int, process core.Process) string {
 	)
 
 	if idx == m.cursor && process.Description != "" {
-		// Handle multi-line description with consistent indentation
-		desc := process.Description
-		lines := strings.Split(desc, "\n")
-		for i, descLine := range lines {
-			if len(descLine) > 40 {
-				descLine = descLine[:37] + "..."
-			}
-			if i == 0 {
-				line += "\n" + helpStyle.Render("    └─ "+descLine)
-			} else {
-				// For subsequent lines, maintain consistent indentation (align with content after └─)
-				line += "\n" + helpStyle.Render("      "+descLine)
+		// Render description with markdown support if enabled
+		var descContent string
+		if m.markdownEnabled {
+			// Use markdown rendering with limited width for list view
+			descContent = RenderMarkdown(process.Description, 42)
+		} else {
+			// Fallback to plain text with basic formatting
+			desc := process.Description
+			lines := strings.Split(desc, "\n")
+			for i, descLine := range lines {
+				if len(descLine) > 40 {
+					descLine = descLine[:37] + "..."
+				}
+				if i == 0 {
+					descContent = "    └─ " + descLine
+				} else {
+					descContent += "\n      " + descLine
+				}
 			}
 		}
+		line += "\n" + descContent
 	}
 
 	return line + "\n"
@@ -175,7 +182,11 @@ func (m Model) renderStatusBar() string {
 	} else if m.statusFilter == core.StatusTerminated {
 		filterStr = "已终止"
 	}
-	return helpStyle.Render(fmt.Sprintf(" 过滤:%s | j/k:导航  enter:详情  s:新建  d:删除  A:全部 r/B/S/T:过滤  /:搜索  G:时间线  D:统计  Y:树  q:返回/退出  ?:帮助", filterStr))
+	markdownStatus := "开"
+	if !m.markdownEnabled {
+		markdownStatus = "关"
+	}
+	return helpStyle.Render(fmt.Sprintf(" 过滤:%s | MD:%s | j/k:导航  enter:详情  s:新建  d:删除  A:全部 r/B/S/T:过滤  /:搜索  G:时间线  D:统计  Y:树  q:返回/退出  m:MD  ?:帮助", filterStr, markdownStatus))
 }
 
 func (m Model) detailView() string {
