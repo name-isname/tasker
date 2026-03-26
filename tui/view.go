@@ -180,41 +180,78 @@ func (m Model) renderStatusBar() string {
 
 func (m Model) detailView() string {
 	if m.currentProcess == nil {
-		return "Loading..."
+		return "加载中..."
 	}
 
 	var b strings.Builder
 
 	// Header
-	b.WriteString(titleStyle.Render(fmt.Sprintf(" Process #%d: %s ", m.currentProcess.ID, m.currentProcess.Title)) + "\n")
+	b.WriteString(titleStyle.Render(fmt.Sprintf(" 进程 #%d: %s ", m.currentProcess.ID, m.currentProcess.Title)) + "\n")
 	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
 
 	// Process info
-	b.WriteString(fmt.Sprintf("Status:    %s %s\n",
+	// Status in Chinese
+	statusText := ""
+	switch m.currentProcess.Status {
+	case core.StatusRunning:
+		statusText = "运行中"
+	case core.StatusBlocked:
+		statusText = "已阻塞"
+	case core.StatusSuspended:
+		statusText = "等待中"
+	case core.StatusTerminated:
+		statusText = "已终止"
+	default:
+		statusText = string(m.currentProcess.Status)
+	}
+	b.WriteString(fmt.Sprintf("状态:      %s %s\n",
 		m.getStatusStyle(m.currentProcess.Status).Render(m.getStatusIcon(m.currentProcess.Status)),
-		m.currentProcess.Status))
+		statusText))
 
-	b.WriteString(fmt.Sprintf("Priority:  %s %s\n",
+	// Priority in Chinese
+	priorityText := ""
+	switch m.currentProcess.Priority {
+	case core.PriorityHigh:
+		priorityText = "高"
+	case core.PriorityMedium:
+		priorityText = "中"
+	case core.PriorityLow:
+		priorityText = "低"
+	default:
+		priorityText = string(m.currentProcess.Priority)
+	}
+	b.WriteString(fmt.Sprintf("优先级:    %s %s\n",
 		m.getPriorityStyle(m.currentProcess.Priority).Render(m.getPriorityIcon(m.currentProcess.Priority)),
-		m.currentProcess.Priority))
+		priorityText))
 
-	b.WriteString(fmt.Sprintf("Created:   %s\n",
+	b.WriteString(fmt.Sprintf("创建时间:  %s\n",
 		helpStyle.Render(m.currentProcess.CreatedAt.Format("2006-01-02 15:04"))))
 
-	b.WriteString(fmt.Sprintf("Updated:   %s\n",
+	b.WriteString(fmt.Sprintf("更新时间:  %s\n",
 		helpStyle.Render(m.currentProcess.UpdatedAt.Format("2006-01-02 15:04"))))
 
+	// Parent process
+	if m.currentProcess.ParentID != nil {
+		parentTitle := "未知"
+		if m.currentProcess.Parent != nil && m.currentProcess.Parent.Title != "" {
+			parentTitle = m.currentProcess.Parent.Title
+		}
+		b.WriteString(fmt.Sprintf("父进程:    #%d %s\n",
+			*m.currentProcess.ParentID,
+			helpStyle.Render(parentTitle)))
+	}
+
 	if m.currentProcess.Description != "" {
-		b.WriteString("\nDescription:\n")
+		b.WriteString("\n描述:\n")
 		b.WriteString(helpStyle.Render("  "+m.currentProcess.Description) + "\n")
 	}
 
 	// Logs
 	b.WriteString("\n" + borderStyle.Render(strings.Repeat("─", 50)) + "\n")
-	b.WriteString(titleStyle.Render(" Timeline ") + "\n")
+	b.WriteString(titleStyle.Render(" 时间线 ") + "\n")
 
 	if len(m.processLogs) == 0 {
-		b.WriteString(helpStyle.Render("No logs yet.") + "\n")
+		b.WriteString(helpStyle.Render("暂无日志记录。") + "\n")
 	} else {
 		for i, log := range m.processLogs {
 			timestamp := log.CreatedAt.Format("15:04")
