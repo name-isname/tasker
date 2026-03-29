@@ -17,6 +17,17 @@ web/     → Gin API handlers that call core functions
 
 **Database Initialization**: The Cobra root command has a `PersistentPreRunE` hook that automatically initializes the SQLite database and runs migrations before ANY subcommand executes. The DB path is configurable via `--db` flag (default: `./taskctl.db`).
 
+## Core Package Structure
+
+The `core/` package is organized into:
+- `models.go` - Entity definitions (Process, Log, ProcessFTS) and constants
+- `db.go` - Database initialization and FTS5 full-text search setup
+- `process.go` - Process CRUD operations
+- `log.go` - Log CRUD and pagination
+- `advanced.go` - Tree operations, timeline, stats, search, export
+- `dto.go` - Data transfer objects (ProcessNode, TimelineEntry, ActivityStat, SearchResult, ProcessExport)
+- `testutil.go` - Test database setup utilities
+
 ## Data Model
 
 **Process-Oriented Task Management**: Tasks are modeled as OS "Processes" with state transitions rather than simple todo items. This is a key conceptual distinction - tasks have lifecycle states (running, blocked, suspended, terminated) and can have child sub-processes.
@@ -116,6 +127,8 @@ npm run build            # Build to dist/ for Go embedding
 
 The TUI uses Bubble Tea with a ViewMode enum pattern to manage different screens. Key implementation details:
 
+- **Markdown rendering**: `tui/markdown.go` provides terminal-friendly markdown rendering for descriptions and logs (supports bold, italic, code, headers, lists, quotes, code blocks)
+
 - **ViewMode enum**: ViewList, ViewDetail, ViewInput, ViewHelp, ViewSpawn, ViewEditProcess, ViewSearch, ViewTimeline, ViewStats, ViewTree, ViewParentSelect, ViewDeleteConfirm
 - **Message handling**: Separate handler functions for each ViewMode (e.g., `handleListKeyMsg`, `handleDetailKeyMsg`)
 - **Multi-line input**: Use `bubbles/textarea` for description and log fields, `bubbles/textinput` for single-line fields
@@ -183,6 +196,13 @@ Advanced Features (in `core/advanced.go`):
 - `FormatProcessTree(node, prefix, isLast)` - Render tree as ASCII
 - `FormatFullTree()` - Render entire forest as ASCII
 
+**DTO Types** (in `core/dto.go`):
+- `ProcessNode` - Hierarchical tree structure for visualization
+- `TimelineEntry` - Log entry with parent process context
+- `ActivityStat` - Daily log counts for heatmaps
+- `SearchResult` - Unified search result with type indicator
+- `ProcessExport` - Complete process data for Markdown export
+
 ## CLI Commands
 
 Process Management:
@@ -216,6 +236,7 @@ Interface:
 
 All routes prefixed with `/api/v1/`:
 - `GET /api/v1/processes` - List processes (optional `?status=` filter)
+- `GET /api/v1/processes/:id` - Get single process
 - `POST /api/v1/processes` - Create process
 - `PUT /api/v1/processes/:id/status` - Change status (uses `ChangeProcessState` transactionally)
 - `DELETE /api/v1/processes/:id` - Delete process
