@@ -63,6 +63,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewMode = ViewList
 		return m, nil
 
+	case ProcessDeletedMsg:
+		m.processes = msg.Processes
+		// Adjust cursor after deletion
+		if len(m.processes) == 0 {
+			m.cursor = 0
+		} else if msg.DeletedIndex >= len(m.processes) {
+			// Deleted last item, move to new last item
+			m.cursor = len(m.processes) - 1
+		} else {
+			// Keep cursor at same position (now points to next item)
+			m.cursor = msg.DeletedIndex
+		}
+		// Ensure cursor is within bounds
+		if m.cursor >= len(m.processes) {
+			m.cursor = len(m.processes) - 1
+		}
+		m.viewportOffset = 0
+		m.viewMode = ViewList
+		return m, nil
+
 	case ShowDetailMsg:
 		return m, m.showProcessDetail(msg.ProcessID)
 
@@ -196,10 +216,12 @@ func (m Model) handleListKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		// Quick jump to item N-1
-		idx := int(msg.String()[0] - '1')
-		if idx < len(m.processes) {
-			m.cursor = idx
-			m.viewportOffset = 0
+		if len(m.processes) > 0 {
+			idx := int(msg.String()[0] - '1')
+			if idx < len(m.processes) {
+				m.cursor = idx
+				m.viewportOffset = 0
+			}
 		}
 		return m, nil
 
@@ -260,6 +282,7 @@ func (m Model) handleListKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.confirmDeleteType = "process"
 			m.confirmDeleteID = process.ID
 			m.confirmDeleteName = process.Title
+			m.confirmDeleteIndex = m.cursor // Save cursor position for adjustment after deletion
 			m.viewMode = ViewDeleteConfirm
 		}
 		return m, nil
@@ -981,9 +1004,24 @@ func (m Model) loadAvailableParents() tea.Cmd {
 func (m Model) handleParentsLoaded(msg ParentsLoadedMsg) (tea.Model, tea.Cmd) {
 	// Filter out the current process if editing (can't be parent of itself)
 	if m.editingProcessID > 0 {
+		// Get all descendant IDs to filter out
+		descendantIDs, err := core.GetDescendantIDs(m.editingProcessID)
+		if err != nil {
+			// If error, just filter self
+			descendantIDs = []uint{m.editingProcessID}
+		}
+		// Also add self to the filter list
+		descendantIDs = append(descendantIDs, m.editingProcessID)
+
+		// Create a set for faster lookup
+		filterSet := make(map[uint]bool)
+		for _, id := range descendantIDs {
+			filterSet[id] = true
+		}
+
 		filtered := make([]core.Process, 0, len(msg.Parents))
 		for _, p := range msg.Parents {
-			if p.ID != m.editingProcessID {
+			if !filterSet[p.ID] {
 				filtered = append(filtered, p)
 			}
 			// Cache parent name if this is the selected parent
@@ -1071,10 +1109,12 @@ func (m Model) handleDeleteConfirmKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.confirmDeleteType == "process" {
 			// Clear confirmation state and switch to list view immediately
 			deleteID := m.confirmDeleteID
+			deletedIndex := m.confirmDeleteIndex
 			currentFilter := m.statusFilter
 			m.confirmDeleteType = ""
 			m.confirmDeleteID = 0
 			m.confirmDeleteName = ""
+			m.confirmDeleteIndex = 0
 			m.viewMode = ViewList
 			return m, func() tea.Msg {
 				err := core.DeleteProcess(deleteID)
@@ -1091,7 +1131,7 @@ func (m Model) handleDeleteConfirmKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					return errMsg{err}
 				}
-				return ProcessesLoadedMsg{Processes: processes}
+				return ProcessDeletedMsg{Processes: processes, DeletedIndex: deletedIndex}
 			}
 		} else if m.confirmDeleteType == "log" && m.currentProcess != nil {
 			// Clear confirmation state and switch to detail view immediately

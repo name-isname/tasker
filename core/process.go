@@ -1,7 +1,53 @@
 package core
 
+import "errors"
+
+// ErrCircularReference is returned when a parent-child relationship would create a cycle
+var ErrCircularReference = errors.New("circular reference: parent cannot be a descendant of the child")
+
+// wouldCreateCircularReference checks if setting parentID for processID would create a cycle
+func wouldCreateCircularReference(processID, parentID uint) bool {
+	// Walk up the ancestor chain from parentID to see if we reach processID
+	currentID := parentID
+	visited := make(map[uint]bool)
+
+	for currentID != 0 {
+		// Prevent infinite loops in case of existing corrupted data
+		if visited[currentID] {
+			return true // Existing cycle detected
+		}
+		visited[currentID] = true
+
+		// If we found the processID in the ancestor chain, setting this parent would create a cycle
+		if currentID == processID {
+			return true
+		}
+
+		// Get parent of current
+		var parent Process
+		err := DB.Select("parent_id").First(&parent, currentID).Error
+		if err != nil {
+			break // Parent not found, end of chain
+		}
+		if parent.ParentID == nil {
+			break // Reached root
+		}
+		currentID = *parent.ParentID
+	}
+
+	return false
+}
+
 // CreateProcess creates a new process
 func CreateProcess(title, description string, parentID *uint, priority ProcessPriority) (*Process, error) {
+	// Validate parentID exists if specified
+	if parentID != nil {
+		var parent Process
+		if err := DB.First(&parent, *parentID).Error; err != nil {
+			return nil, errors.New("parent process not found")
+		}
+	}
+
 	process := &Process{
 		Title:       title,
 		Description: description,
@@ -76,6 +122,15 @@ func UpdateProcess(id uint, title, description *string, priority *ProcessPriorit
 		updates["priority"] = *priority
 	}
 	if parentID != nil {
+		// Check for circular reference
+		if wouldCreateCircularReference(id, *parentID) {
+			return ErrCircularReference
+		}
+		// Validate parent exists
+		var parent Process
+		if err := DB.First(&parent, *parentID).Error; err != nil {
+			return errors.New("parent process not found")
+		}
 		updates["parent_id"] = *parentID
 	}
 
@@ -132,13 +187,31 @@ func DeleteProcess(id uint) error {
 	return DB.Delete(&Process{}, id).Error
 }
 
+// GetDescendantIDs returns all descendant IDs of a process (for filtering)
+func GetDescendantIDs(parentID uint) ([]uint, error) {
+	var ids []uint
+	getDescendantIDs(parentID, &ids)
+	return ids, nil
+}
+
 // getDescendantIDs recursively collects all descendant IDs
 func getDescendantIDs(parentID uint, ids *[]uint) {
+	getDescendantIDsHelper(parentID, ids, make(map[uint]bool))
+}
+
+// getDescendantIDsHelper recursively collects descendant IDs with cycle detection
+func getDescendantIDsHelper(parentID uint, ids *[]uint, visited map[uint]bool) {
+	// Prevent infinite recursion due to circular references
+	if visited[parentID] {
+		return
+	}
+	visited[parentID] = true
+
 	var children []Process
 	DB.Where("parent_id = ?", parentID).Pluck("id", &children)
 
 	for _, child := range children {
 		*ids = append(*ids, child.ID)
-		getDescendantIDs(child.ID, ids) // Recurse
+		getDescendantIDsHelper(child.ID, ids, visited) // Recurse
 	}
 }

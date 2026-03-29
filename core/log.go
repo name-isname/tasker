@@ -30,7 +30,9 @@ func GetLogsPaginated(processID uint, page, pageSize int) ([]Log, int64, error) 
 	var total int64
 
 	// Count total logs
-	DB.Model(&Log{}).Where("process_id = ?", processID).Count(&total)
+	if err := DB.Model(&Log{}).Where("process_id = ?", processID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 
 	// Fetch paginated logs
 	offset := (page - 1) * pageSize

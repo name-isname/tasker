@@ -69,6 +69,49 @@ func TestGetProcessTree(t *testing.T) {
 	}
 }
 
+func TestGetProcessTreeWithCircularReference(t *testing.T) {
+	setupTestDB(t)
+	defer teardownTestDB()
+
+	// Create processes
+	proc1, _ := CreateProcess("Proc1", "", nil, PriorityMedium)
+	proc2, _ := CreateProcess("Proc2", "", &proc1.ID, PriorityMedium)
+
+	// Create a circular reference
+	DB.Model(&Process{}).Where("id = ?", proc1.ID).Update("parent_id", proc2.ID)
+
+	// GetProcessTree should handle this gracefully without infinite recursion
+	tree, err := GetProcessTree(proc1.ID)
+	if err != nil {
+		t.Fatalf("GetProcessTree should handle circular references, got error: %v", err)
+	}
+	if tree == nil {
+		t.Fatal("Expected tree to be returned")
+	}
+}
+
+func TestGetFullProcessTreeWithCircularReference(t *testing.T) {
+	setupTestDB(t)
+	defer teardownTestDB()
+
+	// Create a root process first
+	_, _ = CreateProcess("Root", "", nil, PriorityMedium)
+
+	// Create processes with circular reference
+	proc1, _ := CreateProcess("Proc1", "", nil, PriorityMedium)
+	proc2, _ := CreateProcess("Proc2", "", &proc1.ID, PriorityMedium)
+	DB.Model(&Process{}).Where("id = ?", proc1.ID).Update("parent_id", proc2.ID)
+
+	// GetFullProcessTree should handle this gracefully
+	trees, err := GetFullProcessTree()
+	if err != nil {
+		t.Fatalf("GetFullProcessTree should handle circular references, got error: %v", err)
+	}
+	if len(trees) == 0 {
+		t.Error("Expected at least one tree (the root process)")
+	}
+}
+
 func TestGetFullProcessTree(t *testing.T) {
 	setupTestDB(t)
 	defer teardownTestDB()
@@ -232,6 +275,27 @@ func TestGetProcessContext(t *testing.T) {
 	// Should have 1 child
 	if len(ctx.Children) != 1 {
 		t.Errorf("Expected 1 child, got %d", len(ctx.Children))
+	}
+}
+
+func TestGetProcessContextWithCircularReference(t *testing.T) {
+	setupTestDB(t)
+	defer teardownTestDB()
+
+	// Create processes
+	proc1, _ := CreateProcess("Proc1", "", nil, PriorityMedium)
+	proc2, _ := CreateProcess("Proc2", "", &proc1.ID, PriorityMedium)
+
+	// Create a circular reference
+	DB.Model(&Process{}).Where("id = ?", proc1.ID).Update("parent_id", proc2.ID)
+
+	// GetProcessContext should handle this gracefully without infinite recursion
+	ctx, err := GetProcessContext(proc1.ID)
+	if err != nil {
+		t.Fatalf("GetProcessContext should handle circular references, got error: %v", err)
+	}
+	if ctx == nil {
+		t.Fatal("Expected context to be returned")
 	}
 }
 

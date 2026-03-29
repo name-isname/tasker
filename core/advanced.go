@@ -55,6 +55,17 @@ func GetProcessTree(rootID uint) (*ProcessNode, error) {
 
 // loadChildren recursively loads children for a process node
 func loadChildren(node *ProcessNode) error {
+	return loadChildrenHelper(node, make(map[uint]bool))
+}
+
+// loadChildrenHelper recursively loads children with cycle detection
+func loadChildrenHelper(node *ProcessNode, visited map[uint]bool) error {
+	// Prevent infinite recursion due to circular references
+	if visited[node.ID] {
+		return nil
+	}
+	visited[node.ID] = true
+
 	var children []Process
 	if err := DB.Where("parent_id = ?", node.ID).Order("ranking DESC, created_at DESC").Find(&children).Error; err != nil {
 		return err
@@ -63,7 +74,7 @@ func loadChildren(node *ProcessNode) error {
 	node.Children = make([]*ProcessNode, len(children))
 	for i := range children {
 		childNode := &ProcessNode{Process: children[i]}
-		if err := loadChildren(childNode); err != nil {
+		if err := loadChildrenHelper(childNode, visited); err != nil {
 			return err
 		}
 		node.Children[i] = childNode
@@ -183,6 +194,17 @@ func GlobalSearch(keyword string) ([]SearchResult, error) {
 
 // GetProcessContext retrieves a process with all its logs for export
 func GetProcessContext(processID uint) (*ProcessExport, error) {
+	return getProcessContextHelper(processID, make(map[uint]bool))
+}
+
+// getProcessContextHelper recursively retrieves process context with cycle detection
+func getProcessContextHelper(processID uint, visited map[uint]bool) (*ProcessExport, error) {
+	// Prevent infinite recursion due to circular references
+	if visited[processID] {
+		return nil, nil // Skip already visited nodes
+	}
+	visited[processID] = true
+
 	var process Process
 	if err := DB.First(&process, processID).Error; err != nil {
 		return nil, err
@@ -207,11 +229,14 @@ func GetProcessContext(processID uint) (*ProcessExport, error) {
 
 	// Recursively get children context
 	for _, child := range children {
-		childExport, err := GetProcessContext(child.ID)
+		childExport, err := getProcessContextHelper(child.ID, visited)
 		if err != nil {
 			return nil, err
 		}
-		export.Children = append(export.Children, *childExport)
+		// Skip nil results (cycles)
+		if childExport != nil {
+			export.Children = append(export.Children, *childExport)
+		}
 	}
 
 	return export, nil

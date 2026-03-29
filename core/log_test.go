@@ -87,6 +87,60 @@ func TestGetLogsPaginated(t *testing.T) {
 	}
 }
 
+func TestGetLogsPaginatedEdgeCases(t *testing.T) {
+	setupTestDB(t)
+	defer teardownTestDB()
+
+	process, _ := CreateProcess("Test", "", nil, PriorityMedium)
+
+	// Test page 0 (should still work, returns first page)
+	logs, total, err := GetLogsPaginated(process.ID, 0, 10)
+	if err != nil {
+		t.Fatalf("GetLogsPaginated with page=0 failed: %v", err)
+	}
+	if total != 1 { // 1 auto-created
+		t.Errorf("Expected total 1, got %d", total)
+	}
+	if len(logs) != 1 {
+		t.Errorf("Expected 1 log with page=0, got %d", len(logs))
+	}
+
+	// Test page beyond available data
+	logs2, total2, err := GetLogsPaginated(process.ID, 999, 10)
+	if err != nil {
+		t.Fatalf("GetLogsPaginated with out-of-range page failed: %v", err)
+	}
+	if total2 != 1 {
+		t.Errorf("Expected total 1, got %d", total2)
+	}
+	if len(logs2) != 0 {
+		t.Errorf("Expected 0 logs with out-of-range page, got %d", len(logs2))
+	}
+
+	// Test pageSize=0
+	_, total3, err := GetLogsPaginated(process.ID, 1, 0)
+	if err != nil {
+		t.Fatalf("GetLogsPaginated with pageSize=0 failed: %v", err)
+	}
+	if total3 != 1 {
+		t.Errorf("Expected total 1, got %d", total3)
+	}
+}
+
+func TestGetLogsNonExistentProcess(t *testing.T) {
+	setupTestDB(t)
+	defer teardownTestDB()
+
+	// Test getting logs for non-existent process
+	logs, err := GetLogs(999)
+	if err != nil {
+		t.Fatalf("GetLogs with non-existent process should not error, got: %v", err)
+	}
+	if len(logs) != 0 {
+		t.Errorf("Expected 0 logs for non-existent process, got %d", len(logs))
+	}
+}
+
 func TestDeleteLog(t *testing.T) {
 	setupTestDB(t)
 	defer teardownTestDB()

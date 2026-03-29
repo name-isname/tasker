@@ -94,9 +94,10 @@ type Model struct {
 	treeExpanded map[uint]bool // Track expanded nodes
 
 	// Delete confirmation state
-	confirmDeleteType string // "process" or "log"
-	confirmDeleteID   uint   // ID of item to delete
-	confirmDeleteName string // Name/title of item to delete
+	confirmDeleteType  string // "process" or "log"
+	confirmDeleteID    uint   // ID of item to delete
+	confirmDeleteName  string // Name/title of item to delete
+	confirmDeleteIndex int    // Index of item in list before deletion (for cursor adjustment)
 
 	// Debug: show last pressed key
 	lastKey string
@@ -117,6 +118,10 @@ type (
 	StatusChangeMsg struct {
 		ProcessID uint
 		Status    core.ProcessStatus
+	}
+	ProcessDeletedMsg struct {
+		Processes      []core.Process
+		DeletedIndex   int // Index of deleted item before deletion
 	}
 )
 

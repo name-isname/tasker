@@ -211,6 +211,25 @@ func TestDeleteProcessWithChildren(t *testing.T) {
 	}
 }
 
+func TestDeleteProcessWithCircularReference(t *testing.T) {
+	setupTestDB(t)
+	defer teardownTestDB()
+
+	// Create processes
+	proc1, _ := CreateProcess("Proc1", "", nil, PriorityMedium)
+	proc2, _ := CreateProcess("Proc2", "", &proc1.ID, PriorityMedium)
+
+	// Create a circular reference: proc1's parent becomes proc2
+	// This simulates corrupted data
+	DB.Model(&Process{}).Where("id = ?", proc1.ID).Update("parent_id", proc2.ID)
+
+	// DeleteProcess should handle this gracefully without infinite recursion
+	err := DeleteProcess(proc1.ID)
+	if err != nil {
+		t.Errorf("DeleteProcess should handle circular references, got: %v", err)
+	}
+}
+
 func TestGetChildProcesses(t *testing.T) {
 	setupTestDB(t)
 	defer teardownTestDB()
@@ -245,6 +264,47 @@ func TestGetRootProcesses(t *testing.T) {
 	}
 }
 
+func TestUpdateProcessCircularReference(t *testing.T) {
+	setupTestDB(t)
+	defer teardownTestDB()
+
+	// Create a hierarchy: grandparent -> parent -> child
+	grandparent, _ := CreateProcess("Grandparent", "", nil, PriorityMedium)
+	parent, _ := CreateProcess("Parent", "", &grandparent.ID, PriorityMedium)
+	child, _ := CreateProcess("Child", "", &parent.ID, PriorityMedium)
+
+	// Try to set grandparent's parent to child (would create cycle)
+	err := UpdateProcess(grandparent.ID, nil, nil, nil, &child.ID)
+	if err != ErrCircularReference {
+		t.Errorf("Expected ErrCircularReference, got: %v", err)
+	}
+
+	// Try to set parent's parent to child (would create cycle)
+	err = UpdateProcess(parent.ID, nil, nil, nil, &child.ID)
+	if err != ErrCircularReference {
+		t.Errorf("Expected ErrCircularReference, got: %v", err)
+	}
+
+	// Valid update should still work
+	validParent := uint(999) // Non-existent parent should fail with different error
+	err = UpdateProcess(child.ID, nil, nil, nil, &validParent)
+	if err == nil {
+		t.Error("Expected error for non-existent parent")
+	}
+}
+
+func TestCreateProcessInvalidParent(t *testing.T) {
+	setupTestDB(t)
+	defer teardownTestDB()
+
+	// Try to create process with non-existent parent
+	invalidParent := uint(999)
+	_, err := CreateProcess("Test", "Description", &invalidParent, PriorityMedium)
+	if err == nil {
+		t.Error("Expected error for non-existent parent")
+	}
+}
+
 func TestSearchProcesses(t *testing.T) {
 	setupTestDB(t)
 	defer teardownTestDB()
@@ -263,5 +323,72 @@ func TestSearchProcesses(t *testing.T) {
 	// If FTS5 works, verify results
 	if len(results) > 0 && results[0].Title != "golang programming" {
 		t.Errorf("Expected 'golang programming', got '%s'", results[0].Title)
+	}
+}
+
+func TestGetDescendantIDs(t *testing.T) {
+	setupTestDB(t)
+	defer teardownTestDB()
+
+	// Create a hierarchy: root -> child1 -> grandchild1, grandchild2
+	//                     -> child2
+	root, _ := CreateProcess("Root", "", nil, PriorityMedium)
+	child1, _ := CreateProcess("Child1", "", &root.ID, PriorityMedium)
+	child2, _ := CreateProcess("Child2", "", &root.ID, PriorityMedium)
+	grandchild1, _ := CreateProcess("Grandchild1", "", &child1.ID, PriorityMedium)
+	grandchild2, _ := CreateProcess("Grandchild2", "", &child1.ID, PriorityMedium)
+
+	// Get descendants of root
+	descendants, err := GetDescendantIDs(root.ID)
+	if err != nil {
+		t.Fatalf("GetDescendantIDs failed: %v", err)
+	}
+
+	// Should have 4 descendants: child1, child2, grandchild1, grandchild2
+	if len(descendants) != 4 {
+		t.Errorf("Expected 4 descendants, got %d", len(descendants))
+	}
+
+	// Verify IDs - all should be in the descendants list
+	expectedIDs := map[uint]bool{child1.ID: true, child2.ID: true, grandchild1.ID: true, grandchild2.ID: true}
+	for _, id := range descendants {
+		if !expectedIDs[id] {
+			t.Errorf("Unexpected descendant ID: %d", id)
+		}
+	}
+
+	// Get descendants of child1 (should have 2 grandchildren)
+	child1Descendants, _ := GetDescendantIDs(child1.ID)
+	if len(child1Descendants) != 2 {
+		t.Errorf("Expected 2 descendants for child1, got %d", len(child1Descendants))
+	}
+
+	// Get descendants of leaf process (should be empty)
+	leafDescendants, _ := GetDescendantIDs(grandchild1.ID)
+	if len(leafDescendants) != 0 {
+		t.Errorf("Expected 0 descendants for leaf, got %d", len(leafDescendants))
+	}
+}
+
+func TestGetDescendantsWithCircularReference(t *testing.T) {
+	setupTestDB(t)
+	defer teardownTestDB()
+
+	// Create processes
+	proc1, _ := CreateProcess("Proc1", "", nil, PriorityMedium)
+	proc2, _ := CreateProcess("Proc2", "", &proc1.ID, PriorityMedium)
+
+	// Create a circular reference
+	DB.Model(&Process{}).Where("id = ?", proc1.ID).Update("parent_id", proc2.ID)
+
+	// GetDescendantIDs should handle this gracefully
+	descendants, err := GetDescendantIDs(proc1.ID)
+	if err != nil {
+		t.Fatalf("GetDescendantIDs should handle circular references, got error: %v", err)
+	}
+
+	// Should return at least proc2 (the direct child)
+	if len(descendants) == 0 {
+		t.Error("Expected at least one descendant")
 	}
 }
