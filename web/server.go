@@ -1,6 +1,10 @@
 package web
 
 import (
+	"io"
+	"io/fs"
+	"net/http"
+	"strings"
 	"taskctl/core"
 	"github.com/gin-gonic/gin"
 	"strconv"
@@ -9,11 +13,13 @@ import (
 // StartServer starts the web server
 func StartServer(port string) error {
 	r := gin.Default()
+	r.RedirectTrailingSlash = false
 
-	// API routes
+	// API routes - register these first
 	api := r.Group("/api/v1")
 	{
 		api.GET("/processes", getProcesses)
+		api.GET("/processes/:id", getProcess)
 		api.POST("/processes", createProcess)
 		api.PUT("/processes/:id/status", setProcessStatus)
 		api.DELETE("/processes/:id", deleteProcess)
@@ -22,10 +28,62 @@ func StartServer(port string) error {
 		api.GET("/search", searchProcesses)
 	}
 
-	// Serve static files
-	r.Static("/", "./frontend/dist")
+	// Create HTTP file server for embedded frontend
+	fsys, err := fs.Sub(FrontendFS, "frontend/dist")
+	if err != nil {
+		return err
+	}
+
+	// Serve all non-API routes through the file server
+	r.NoRoute(func(c *gin.Context) {
+		// Check if this is an API route that wasn't found
+		if len(c.Request.URL.Path) >= 5 && c.Request.URL.Path[:5] == "/api/" {
+			c.JSON(404, gin.H{"error": "not found"})
+			return
+		}
+
+		// Try to serve the file from embedded filesystem
+		path := strings.TrimPrefix(c.Request.URL.Path, "/")
+		if path == "" {
+			path = "index.html"
+		}
+
+		// Check if file exists and serve it
+		file, err := fsys.Open(path)
+		if err == nil {
+			defer file.Close()
+			stat, _ := file.Stat()
+			http.ServeContent(c.Writer, c.Request, path, stat.ModTime(), file.(interface {
+				io.ReadSeeker
+			}))
+			return
+		}
+
+		// File doesn't exist, return index.html for SPA routing
+		indexFile, _ := fsys.Open("index.html")
+		defer indexFile.Close()
+		stat, _ := indexFile.Stat()
+		http.ServeContent(c.Writer, c.Request, "index.html", stat.ModTime(), indexFile.(interface {
+			io.ReadSeeker
+		}))
+	})
 
 	return r.Run(":" + port)
+}
+
+func getProcess(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid id"})
+		return
+	}
+
+	process, err := core.GetProcess(uint(id))
+	if err != nil {
+		c.JSON(404, gin.H{"error": "process not found"})
+		return
+	}
+	c.JSON(200, process)
 }
 
 func getProcesses(c *gin.Context) {
@@ -75,13 +133,15 @@ func setProcessStatus(c *gin.Context) {
 
 	var req struct {
 		Status core.ProcessStatus `json:"status" binding:"required"`
+		Reason string             `json:"reason"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 
-	err = core.SetProcessStatus(uint(id), req.Status)
+	// Use ChangeProcessState for transactional consistency with TUI
+	err = core.ChangeProcessState(uint(id), req.Status, req.Reason)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return

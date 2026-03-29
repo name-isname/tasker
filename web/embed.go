@@ -7,10 +7,10 @@ import (
 )
 
 //go:embed frontend/dist
-var frontendFS embed.FS
+var FrontendFS embed.FS
 
-// FrontendFS returns the frontend filesystem
-func FrontendFS() http.FileSystem {
-	fsys, _ := fs.Sub(frontendFS, "frontend/dist")
+// GetFrontendFS returns the frontend filesystem as http.FileSystem
+func GetFrontendFS() http.FileSystem {
+	fsys, _ := fs.Sub(FrontendFS, "frontend/dist")
 	return http.FS(fsys)
 }
