@@ -17,6 +17,14 @@ web/     → Gin API handlers that call core functions
 
 **Database Initialization**: The Cobra root command has a `PersistentPreRunE` hook that automatically initializes the SQLite database and runs migrations before ANY subcommand executes. The DB path is configurable via `--db` flag (default: `./taskctl.db`).
 
+**Git Workflow**: ALWAYS create a git commit after completing code changes. Use conventional commit format:
+- `feat:` for new features
+- `fix:` for bug fixes
+- `docs:` for documentation changes
+- `refactor:` for code refactoring
+- `test:` for test changes
+- `chore:` for maintenance tasks
+
 ## Core Package Structure
 
 The `core/` package is organized into:
