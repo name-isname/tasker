@@ -14,10 +14,10 @@ var (
 	borderStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("238"))
 
 	// Status styles
-	statusStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("86"))  // running - green
+	statusStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("46"))  // running - green
 	blockedStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("226")) // blocked - yellow
 	suspendedStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("241")) // suspended - gray
-	doneStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("114")) // terminated - green
+	doneStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("241")) // terminated - gray
 
 	// Priority styles
 	priorityHighStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("196")) // red
