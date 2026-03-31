@@ -648,7 +648,7 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		// Was creating new, return to list view
 		m.viewMode = ViewList
-		return m, nil
+		return m, refreshProcesses()
 
 	case "ctrl+enter", "ctrl+j":
 		// Ctrl+Enter or Ctrl+J (macOS compatible) submits the form
