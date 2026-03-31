@@ -330,7 +330,7 @@ func (m Model) renderDetailStatusBar() string {
 	if !m.markdownEnabled {
 		markdownStatus = "关"
 	}
-	return helpStyle.Render(fmt.Sprintf(" E:编辑  b/p/w/t:状态  a:添加日志  e:编辑日志  x:删除  j/k:选择  q:返回", markdownStatus)) + "\n" +
+	return helpStyle.Render(" E:编辑  b/p/w/t:状态  a:添加日志  e:编辑日志  x:删除  j/k:选择  q:返回") + "\n" +
 		helpStyle.Render(fmt.Sprintf(" m:Markdown(%s)", markdownStatus))
 }
 
