@@ -90,7 +90,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewMode = ViewList
 		m.currentProcess = nil
 		m.processLogs = nil
-		return m, nil
+		// Refresh process list when returning to list view
+		return m, refreshProcesses()
 
 	case errMsg:
 		m.err = msg
