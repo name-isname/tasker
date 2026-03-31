@@ -1,5 +1,5 @@
 // Keyboard Shortcuts Composable
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 type KeyboardHandler = (e: KeyboardEvent) => void

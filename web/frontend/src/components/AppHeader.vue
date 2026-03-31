@@ -11,6 +11,10 @@ const goToSearch = () => {
 const onCreateClick = () => {
   window.dispatchEvent(new CustomEvent('open-create-modal'))
 }
+
+const onHelpClick = () => {
+  window.dispatchEvent(new CustomEvent('show-keyboard-help'))
+}
 </script>
 
 <template>
@@ -39,7 +43,7 @@ const onCreateClick = () => {
       <button class="icon-btn" title="Create process (c)" @click="onCreateClick">
         ➕
       </button>
-      <button class="icon-btn" title="Keyboard shortcuts (?)" @click="showHelp = true">
+      <button class="icon-btn" title="Keyboard shortcuts (?)" @click="onHelpClick">
         ⌨️
       </button>
       <ThemeToggle />
