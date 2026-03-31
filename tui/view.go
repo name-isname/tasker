@@ -198,7 +198,9 @@ func (m Model) renderStatusBar() string {
 	if !m.markdownEnabled {
 		markdownStatus = "关"
 	}
-	return helpStyle.Render(fmt.Sprintf(" 过滤:%s | MD:%s | j/k:导航  enter:详情  s:新建  d:删除  A:全部 r/B/S/T:过滤  /:搜索  G:时间线  D:统计  Y:树  q:返回/退出  m:MD  ?:帮助", filterStr, markdownStatus))
+	return helpStyle.Render(fmt.Sprintf(" 过滤:%s | MD:%s | j/k:导航  enter:详情  s:新建  d:删除  A:全部  /:搜索  q:退出  m:MD  ?:帮助",
+		filterStr, markdownStatus)) + "\n" +
+		helpStyle.Render(" r/B/S/T:过滤  G:时间线  D:统计  Y:树")
 }
 
 func (m Model) detailView() string {
@@ -328,7 +330,8 @@ func (m Model) renderDetailStatusBar() string {
 	if !m.markdownEnabled {
 		markdownStatus = "关"
 	}
-	return helpStyle.Render(fmt.Sprintf(" E:编辑  b/p/w/t:状态  a:添加  e:编辑  x:删除  m:Markdown(%s)  j/k:选择  q:返回", markdownStatus))
+	return helpStyle.Render(fmt.Sprintf(" E:编辑  b/p/w/t:状态  a:添加日志  e:编辑日志  x:删除  j/k:选择  q:返回", markdownStatus)) + "\n" +
+		helpStyle.Render(fmt.Sprintf(" m:Markdown(%s)", markdownStatus))
 }
 
 func (m Model) errorView() string {
