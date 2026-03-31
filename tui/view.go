@@ -98,23 +98,23 @@ func (m Model) renderProcessItem(idx int, process core.Process) string {
 	}
 
 	// Status icon and style
-	var statusStyle lipgloss.Style
+	var iconStyle lipgloss.Style
 	var statusIcon string
 	switch process.Status {
 	case core.StatusRunning:
-		statusStyle = statusStyle
+		iconStyle = statusStyle
 		statusIcon = "▶"
 	case core.StatusBlocked:
-		statusStyle = blockedStyle
+		iconStyle = blockedStyle
 		statusIcon = "⏸"
 	case core.StatusSuspended:
-		statusStyle = suspendedStyle
+		iconStyle = suspendedStyle
 		statusIcon = "⏹"
 	case core.StatusTerminated:
-		statusStyle = doneStyle
+		iconStyle = doneStyle
 		statusIcon = "✓"
 	default:
-		statusStyle = helpStyle
+		iconStyle = helpStyle
 		statusIcon = "?"
 	}
 
