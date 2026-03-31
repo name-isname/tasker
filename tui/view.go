@@ -139,7 +139,7 @@ func (m Model) renderProcessItem(idx int, process core.Process) string {
 	// Build the line
 	line := fmt.Sprintf("%s [%s] [%s] %s",
 		cursorStyle.Render(cursor),
-		statusStyle.Render(statusIcon),
+		iconStyle.Render(statusIcon),
 		priorityStyle.Render(priorityIcon),
 		process.Title,
 	)
