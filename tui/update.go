@@ -1165,6 +1165,11 @@ func (m Model) handleDeleteConfirmKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Cancel deletion - return to previous view
 		if m.confirmDeleteType == "process" {
 			m.viewMode = ViewList
+			// Clear confirmation state
+			m.confirmDeleteType = ""
+			m.confirmDeleteID = 0
+			m.confirmDeleteName = ""
+			return m, refreshProcesses()
 		} else {
 			m.viewMode = ViewDetail
 		}
