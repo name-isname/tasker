@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "git add -A && git commit -m 'chore: auto-commit after changes' && make build",
+            "command": "git add -A && (git diff --cached --quiet || git commit -m 'chore: auto-commit after changes') && make build",
             "timeout": 120,
             "statusMessage": "Committing and building..."
           }
