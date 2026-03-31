@@ -849,7 +849,6 @@ func (m Model) handleTimelineKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Return to list
 		m.viewMode = ViewList
 		return m, refreshProcesses()
-		return m, nil
 
 	case "ctrl+c":
 		m.quitting = true
