@@ -848,6 +848,7 @@ func (m Model) handleTimelineKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q", "esc":
 		// Return to list
 		m.viewMode = ViewList
+		return m, refreshProcesses()
 		return m, nil
 
 	case "ctrl+c":
