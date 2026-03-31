@@ -588,6 +588,7 @@ func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Cancel input - return to previous view
 		if m.inputPrompt == "Search" {
 			m.viewMode = ViewList
+			return m, refreshProcesses()
 		} else {
 			m.viewMode = ViewDetail
 		}
