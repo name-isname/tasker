@@ -883,7 +883,7 @@ func (m Model) handleStatsKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q", "esc":
 		// Return to list
 		m.viewMode = ViewList
-		return m, nil
+		return m, refreshProcesses()
 
 	case "ctrl+c":
 		m.quitting = true
