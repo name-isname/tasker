@@ -51,8 +51,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleKeyMsg(msg)
 
 	case TickMsg:
-		// Auto-refresh every tick with current filter
-		return m, refreshProcessesWithFilter(m.statusFilter)
+		// Auto-refresh every tick with current filter (only in list view)
+		if m.viewMode == ViewList {
+			return m, refreshProcessesWithFilter(m.statusFilter)
+		}
+		return m, nil
 
 	case ProcessesLoadedMsg:
 		m.processes = msg.Processes
@@ -61,8 +64,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cursor = 0
 			m.viewportOffset = 0
 		}
-		// Return to list view after loading processes
-		m.viewMode = ViewList
+		// Only set view mode if currently in list view
+		// This prevents auto-refresh from kicking users out of detail/search/timeline views
+		if m.viewMode == ViewList {
+			m.viewMode = ViewList
+		}
 		return m, nil
 
 	case ProcessDeletedMsg:
