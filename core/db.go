@@ -11,6 +11,14 @@ var DB *gorm.DB
 
 // InitDB initializes the SQLite database
 func InitDB(dbPath string) error {
+	// Ensure parent directory exists
+	dbDir := filepath.Dir(dbPath)
+	if dbDir != "." && dbDir != "" {
+		if err := os.MkdirAll(dbDir, 0755); err != nil {
+			return err
+		}
+	}
+
 	var err error
 	DB, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
