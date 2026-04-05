@@ -2,12 +2,14 @@ package cli
 
 import (
 	"os"
+	"path/filepath"
 	"taskctl/core"
 	"github.com/spf13/cobra"
 )
 
 var (
 	jsonOutput bool
+	localDB    bool
 )
 
 // Command groups for better organization
