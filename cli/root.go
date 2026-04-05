@@ -102,6 +102,7 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().StringP("db", "d", "./taskctl.db", "Path to the SQLite database")
+	rootCmd.PersistentFlags().BoolVarP(&localDB, "local", "L", false, "Use local database in current directory")
 	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 
 	// Set up command groups for better organization
