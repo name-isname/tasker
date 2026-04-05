@@ -67,8 +67,21 @@ rather than simple todo items. Every state change and progress note is recorded 
 			return nil
 		}
 
-		// Initialize database before running commands
+		// Determine database path (priority: --db > --local > default global)
 		dbPath, _ := cmd.Flags().GetString("db")
+		if dbPath == "./taskctl.db" {
+			// --db not explicitly set, check --local flag
+			local, _ := cmd.Flags().GetBool("local")
+			if !local {
+				// Use global path
+				homeDir, err := os.UserHomeDir()
+				if err != nil {
+					return err
+				}
+				dbPath = filepath.Join(homeDir, ".taskctl", "taskctl.db")
+			}
+		}
+
 		if err := core.InitDB(dbPath); err != nil {
 			return err
 		}
