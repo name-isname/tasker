@@ -52,6 +52,9 @@ func (m Model) View() string {
 	if m.viewMode == ViewDeleteConfirm {
 		return m.deleteConfirmView()
 	}
+	if m.viewMode == ViewExportConfirm {
+		return m.exportConfirmView()
+	}
 	return ""
 }
 
@@ -214,6 +217,12 @@ func (m Model) detailView() string {
 	b.WriteString(titleStyle.Render(fmt.Sprintf(" 进程 #%d: %s ", m.currentProcess.ID, m.currentProcess.Title)) + "\n")
 	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
 
+	// Show export success message if available
+	if m.exportSuccessMsg != "" {
+		b.WriteString(statusStyle.Render("✓ " + m.exportSuccessMsg) + "\n\n")
+		m.exportSuccessMsg = "" // Clear message after displaying
+	}
+
 	// Process info
 	// Status in Chinese
 	statusText := ""
@@ -330,7 +339,7 @@ func (m Model) renderDetailStatusBar() string {
 	if !m.markdownEnabled {
 		markdownStatus = "关"
 	}
-	return helpStyle.Render(" E:编辑  b/p/w/t:状态  a:添加日志  e:编辑日志  x:删除  j/k:选择  q:返回") + "\n" +
+	return helpStyle.Render(" E:编辑  b/p/w/t:状态  a:添加日志  e:编辑日志  x:删除  >:导出  j/k:选择  q:返回") + "\n" +
 		helpStyle.Render(fmt.Sprintf(" m:Markdown(%s)", markdownStatus))
 }
 
@@ -452,6 +461,7 @@ func (m Model) helpView() string {
 		"  a             添加日志",
 		"  e             编辑选中的日志",
 		"  x             删除选中的日志 (需确认)",
+		"  >             导出为 Markdown 文件",
 		"  m             切换 Markdown 渲染",
 		"  j/k           选择日志",
 		"  q/esc/h/←     返回列表",
@@ -948,6 +958,23 @@ func (m Model) deleteConfirmView() string {
 
 	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
 	b.WriteString(helpStyle.Render(" y:确认删除  n/esc:取消"))
+
+	return b.String()
+}
+
+func (m Model) exportConfirmView() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render(" 导出进程 ") + "\n")
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n\n")
+
+	b.WriteString(fmt.Sprintf("确定要导出进程为 Markdown 文件吗？\n\n"))
+	b.WriteString(helpStyle.Render(fmt.Sprintf("  文件名: %s\n", m.exportFileName)))
+	b.WriteString(helpStyle.Render(fmt.Sprintf("  路径:   %s\n", m.exportFilePath)))
+	b.WriteString("\n")
+
+	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
+	b.WriteString(helpStyle.Render(" y:确认导出  n/esc:取消"))
 
 	return b.String()
 }

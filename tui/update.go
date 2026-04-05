@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"taskctl/core"
@@ -133,6 +135,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ParentsLoadedMsg:
 		return m.handleParentsLoaded(msg)
+
+	case ExportSuccessMsg:
+		m.exportSuccessMsg = fmt.Sprintf("Exported to: %s", msg.FilePath)
+		m.exportFilePath = msg.FilePath
+		// Clear export state but keep success message for display
+		m.exportProcessID = 0
+		m.exportFileName = ""
+		// Return to detail view
+		m.viewMode = ViewDetail
+		return m, nil
 	}
 	return m, nil
 }
@@ -165,6 +177,8 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleParentSelectKeyMsg(msg)
 	case ViewDeleteConfirm:
 		return m.handleDeleteConfirmKeyMsg(msg)
+	case ViewExportConfirm:
+		return m.handleExportConfirmKeyMsg(msg)
 	}
 	return m, nil
 }
@@ -458,6 +472,16 @@ func (m Model) handleDetailKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "c":
 		// Copy log content to clipboard (placeholder for future implementation)
 		// TODO: Implement clipboard functionality using atotto/clipboard
+		return m, nil
+
+	case ">":
+		// Export process as Markdown
+		if m.currentProcess != nil {
+			m.exportProcessID = m.currentProcess.ID
+			m.exportFileName = GenerateExportFileName(m.currentProcess)
+			m.exportFilePath = GetAbsolutePath(m.exportFileName)
+			m.viewMode = ViewExportConfirm
+		}
 		return m, nil
 	}
 
@@ -1177,6 +1201,37 @@ func (m Model) handleDeleteConfirmKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.confirmDeleteType = ""
 		m.confirmDeleteID = 0
 		m.confirmDeleteName = ""
+		return m, nil
+
+	case "ctrl+c":
+		m.quitting = true
+		return m, tea.Quit
+	}
+	return m, nil
+}
+
+// handleExportConfirmKeyMsg handles key messages in export confirmation view
+func (m Model) handleExportConfirmKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y", "Y":
+		// Confirm export
+		exportID := m.exportProcessID
+		m.viewMode = ViewDetail
+		return m, func() tea.Msg {
+			filePath, err := ExportProcess(exportID)
+			if err != nil {
+				return errMsg{err}
+			}
+			return ExportSuccessMsg{FilePath: filePath}
+		}
+
+	case "n", "N", "q", "esc":
+		// Cancel export - return to detail view
+		m.viewMode = ViewDetail
+		// Clear export state
+		m.exportProcessID = 0
+		m.exportFileName = ""
+		m.exportFilePath = ""
 		return m, nil
 
 	case "ctrl+c":

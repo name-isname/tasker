@@ -25,6 +25,7 @@ const (
 	ViewTree
 	ViewParentSelect  // For selecting parent process
 	ViewDeleteConfirm // For delete confirmation
+	ViewExportConfirm // For export confirmation
 )
 
 // Model represents the TUI state
@@ -99,6 +100,12 @@ type Model struct {
 	confirmDeleteName  string // Name/title of item to delete
 	confirmDeleteIndex int    // Index of item in list before deletion (for cursor adjustment)
 
+	// Export state
+	exportProcessID  uint   // ID of process to export
+	exportFileName   string // Generated filename for export
+	exportFilePath   string // Full path where file will be written
+	exportSuccessMsg string // Success message after export
+
 	// Debug: show last pressed key
 	lastKey string
 
@@ -122,6 +129,9 @@ type (
 	ProcessDeletedMsg struct {
 		Processes      []core.Process
 		DeletedIndex   int // Index of deleted item before deletion
+	}
+	ExportSuccessMsg struct {
+		FilePath string
 	}
 )
 
