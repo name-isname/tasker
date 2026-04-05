@@ -5,10 +5,11 @@
         "matcher": "Edit|Write",
         "hooks": [
           {
-            "type": "command",
-            "command": "git add -A && (git diff --cached --quiet || git commit -m 'chore: auto-commit after changes') && make build",
+            "type": "agent",
+            "prompt": "Analyze the staged git changes and generate a meaningful conventional commit message (feat:, fix:, docs:, refactor:, test:, chore:), then execute the commit. Run: git add -A && git diff --cached to see changes. Then create a commit with an appropriate message. Finally run: make build",
             "timeout": 120,
-            "statusMessage": "Committing and building..."
+            "statusMessage": "Analyzing changes and committing...",
+            "model": "claude-sonnet-4-6"
           }
         ]
       }
