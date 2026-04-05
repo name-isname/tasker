@@ -339,7 +339,7 @@ func (m Model) renderDetailStatusBar() string {
 	if !m.markdownEnabled {
 		markdownStatus = "关"
 	}
-	return helpStyle.Render(" E:编辑  b/p/w/t:状态  a:添加日志  e:编辑日志  x:删除  >:导出  j/k:选择  q:返回") + "\n" +
+	return helpStyle.Render(" E:编辑  b/p/w/t:状态  a:添加日志  e:编辑日志  x:删除  X:导出  j/k:选择  q:返回") + "\n" +
 		helpStyle.Render(fmt.Sprintf(" m:Markdown(%s)", markdownStatus))
 }
 
@@ -461,7 +461,7 @@ func (m Model) helpView() string {
 		"  a             添加日志",
 		"  e             编辑选中的日志",
 		"  x             删除选中的日志 (需确认)",
-		"  >             导出为 Markdown 文件",
+		"  X             导出为 Markdown 文件",
 		"  m             切换 Markdown 渲染",
 		"  j/k           选择日志",
 		"  q/esc/h/←     返回列表",

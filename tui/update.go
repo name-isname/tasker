@@ -474,7 +474,7 @@ func (m Model) handleDetailKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// TODO: Implement clipboard functionality using atotto/clipboard
 		return m, nil
 
-	case ">":
+	case "X":
 		// Export process as Markdown
 		if m.currentProcess != nil {
 			m.exportProcessID = m.currentProcess.ID
