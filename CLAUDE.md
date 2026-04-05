@@ -17,7 +17,11 @@ web/     → Gin API handlers that call core functions
 
 **Database Initialization**: The Cobra root command has a `PersistentPreRunE` hook that automatically initializes the SQLite database and runs migrations before ANY subcommand executes. The DB path is configurable via `--db` flag (default: `./taskctl.db`).
 
-**Git Workflow**: ALWAYS create a git commit after completing code changes. Use conventional commit format:
+**Git Workflow**: This project has automated hooks (`.claude/settings.json`):
+- **PostToolUse (Edit|Write)**: Auto-analyzes changes and creates conventional commits via agent
+- **Stop**: Runs `make build` when Claude Code session ends
+
+ALWAYS create a git commit after completing code changes. Use conventional commit format:
 - `feat:` for new features
 - `fix:` for bug fixes
 - `docs:` for documentation changes
@@ -125,7 +129,7 @@ npm run build            # Build to dist/ for Go embedding
 **Keyboard Shortcuts**:
 - Global: `c` (create), `/` (search), `n` (home), `?` (help), `Escape` (close)
 - List view: `j/k` or `↑/↓` (navigate), `Enter` (open), `d` (delete), `e` (edit)
-- Detail view: `l` (focus log input), `1-4` (quick status change)
+- Detail view: `E` (edit process), `b/p/w/t` (status change), `a` (add log), `e` (edit log), `x` (delete log), `X` (export Markdown), `m` (toggle Markdown), `j/k` (select log), `1-4` (quick status change)
 
 **Production**: Built assets are embedded via `//go:embed` in `web/embed.go`. The Gin server uses `NoRoute` handler to serve the SPA, returning `index.html` for all non-API routes.
 
@@ -137,12 +141,13 @@ The TUI uses Bubble Tea with a ViewMode enum pattern to manage different screens
 
 - **Markdown rendering**: `tui/markdown.go` provides terminal-friendly markdown rendering for descriptions and logs (supports bold, italic, code, headers, lists, quotes, code blocks)
 
-- **ViewMode enum**: ViewList, ViewDetail, ViewInput, ViewHelp, ViewSpawn, ViewEditProcess, ViewSearch, ViewTimeline, ViewStats, ViewTree, ViewParentSelect, ViewDeleteConfirm
+- **ViewMode enum**: ViewList, ViewDetail, ViewInput, ViewHelp, ViewSpawn, ViewEditProcess, ViewSearch, ViewTimeline, ViewStats, ViewTree, ViewParentSelect, ViewDeleteConfirm, ViewExportConfirm
 - **Message handling**: Separate handler functions for each ViewMode (e.g., `handleListKeyMsg`, `handleDetailKeyMsg`)
 - **Multi-line input**: Use `bubbles/textarea` for description and log fields, `bubbles/textinput` for single-line fields
 - **Ctrl+Enter for submission**: Forms with textarea fields use Ctrl+Enter to submit, regular Enter allows line breaks
 - **Parent process selection**: Separate ViewParentSelect mode for choosing parent processes; filters out current process AND all descendants
 - **Viewport scrolling**: List views use viewportOffset for large datasets
+- **Auto-refresh behavior**: TickMsg only triggers refresh when in ViewList mode to prevent kicking users out of detail/search/timeline views
 
 ### TUI Message Types
 The TUI uses custom Bubble Tea messages for async operations:
@@ -151,7 +156,17 @@ The TUI uses custom Bubble Tea messages for async operations:
 - `ProcessDetailLoadedMsg` - Process detail view with logs
 - `ShowDetailMsg`, `BackToListMsg` - Navigation messages
 - `ParentsLoadedMsg` - Parent selection list loaded
+- `ExportSuccessMsg` - Export completed with file path
+- `ClearExportSuccessMsg` - Auto-clear export success message after delay
 - `errMsg` - Error handling
+
+### TUI Export Functionality
+Export is implemented in `tui/export.go`:
+- `ExportProcess(processID)` - Exports process to Markdown file in current directory
+- `GenerateExportFileName(process)` - Generates `{title}-{id}.md` filename
+- `GetAbsolutePath(filename)` - Resolves relative paths to absolute
+- Detail view shortcut: `X` (uppercase) triggers export confirmation dialog
+- Success message auto-clears after 3 seconds using `tea.Tick`
 
 ## Feature Implementation Guidelines
 

@@ -6,10 +6,23 @@
         "hooks": [
           {
             "type": "agent",
-            "prompt": "Analyze the staged git changes and generate a meaningful conventional commit message (feat:, fix:, docs:, refactor:, test:, chore:), then execute the commit. Run: git add -A && git diff --cached to see changes. Then create a commit with an appropriate message. Finally run: make build",
+            "prompt": "Analyze the staged git changes and generate a meaningful conventional commit message (feat:, fix:, docs:, refactor:, test:, chore:), then execute the commit. Run: git add -A && git diff --cached to see changes. Then create a commit with an appropriate message.",
             "timeout": 120,
             "statusMessage": "Analyzing changes and committing...",
             "model": "claude-sonnet-4-6"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "make build",
+            "timeout": 60,
+            "statusMessage": "Running make build...",
+            "async": false
           }
         ]
       }
