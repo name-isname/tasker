@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -143,13 +144,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleParentsLoaded(msg)
 
 	case ExportSuccessMsg:
-		m.exportSuccessMsg = fmt.Sprintf("Exported to: %s", msg.FilePath)
+		m.exportSuccessMsg = fmt.Sprintf("导出到: %s", msg.FilePath)
 		m.exportFilePath = msg.FilePath
 		// Clear export state but keep success message for display
 		m.exportProcessID = 0
 		m.exportFileName = ""
 		// Return to detail view
 		m.viewMode = ViewDetail
+		// Auto-clear success message after 3 seconds
+		return m, tea.Tick(time.Second*3, func(t time.Time) tea.Msg {
+			return ClearExportSuccessMsg{}
+		})
+
+	case ClearExportSuccessMsg:
+		m.exportSuccessMsg = ""
 		return m, nil
 	}
 	return m, nil

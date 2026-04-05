@@ -220,7 +220,6 @@ func (m Model) detailView() string {
 	// Show export success message if available
 	if m.exportSuccessMsg != "" {
 		b.WriteString(statusStyle.Render("✓ " + m.exportSuccessMsg) + "\n\n")
-		m.exportSuccessMsg = "" // Clear message after displaying
 	}
 
 	// Process info

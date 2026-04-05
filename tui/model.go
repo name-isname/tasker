@@ -133,6 +133,7 @@ type (
 	ExportSuccessMsg struct {
 		FilePath string
 	}
+	ClearExportSuccessMsg struct{}
 )
 
 // InitialModel creates the initial TUI model
