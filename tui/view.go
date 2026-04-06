@@ -412,11 +412,6 @@ func (m Model) inputView() string {
 	b.WriteString(m.textInput.View())
 	b.WriteString("\n\n")
 
-	// Debug: show last key pressed
-	if m.lastKey != "" {
-		b.WriteString(helpStyle.Render(fmt.Sprintf("[DEBUG] 最后按键: %s", m.lastKey)) + "\n")
-	}
-
 	// Show different help text for state change (allows empty input)
 	if m.pendingStateChange != nil {
 		b.WriteString(helpStyle.Render(" enter:确认 (备注可选)  esc:取消"))
@@ -618,11 +613,6 @@ func (m Model) spawnView() string {
 	b.WriteString(parentLabel + " " + helpStyle.Render(parentStr) + "\n\n")
 
 	b.WriteString(borderStyle.Render(strings.Repeat("─", 50)) + "\n")
-
-	// Debug: show last key pressed
-	if m.lastKey != "" {
-		b.WriteString(helpStyle.Render(fmt.Sprintf("[DEBUG] 最后按键: %s", m.lastKey)) + "\n")
-	}
 
 	action := "创建"
 	if m.editingProcessID > 0 {
