@@ -52,4 +52,4 @@ changelog:
 release:
   github:
     owner: name-isname
-    name: taskctl
+    name: tasker
