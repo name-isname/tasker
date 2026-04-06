@@ -109,6 +109,38 @@ make release
 
 Access via `taskctl version` command.
 
+## Homebrew Distribution
+
+The project is distributed via Homebrew tap at `name-isname/homebrew-taskctl`:
+
+**Installation**:
+```bash
+brew install name-isname/taskctl/taskctl
+```
+
+**Tap location**: `/opt/homebrew/Library/Taps/name-isname/homebrew-taskctl/Formula/taskctl.rb`
+
+**Updating Formula after release**:
+```bash
+cd /opt/homebrew/Library/Taps/name-isname/homebrew-taskctl
+
+# Download new release and get SHA256 checksums
+curl -sL https://github.com/name-isname/tasker/releases/download/vX.X.X/taskctl_X.X.X_darwin_arm64.tar.gz | shasum -a 256
+# Repeat for each platform...
+
+# Edit Formula/taskctl.rb:
+# - Update tag: "vX.X.X"
+# - Update revision: "<new commit SHA>"
+# - Update all URLs with new version
+# - Update all sha256 values
+
+git add Formula/
+git commit -m "Update taskctl to vX.X.X"
+git push
+```
+
+**Formula supports**: macOS ARM64/AMD64, Linux ARM64/AMD64
+
 ## Technology Constraints
 
 - **SQLite**: MUST use `github.com/glebarez/sqlite` (pure Go, no CGO) to enable easy cross-compilation. Goreleaser builds set `CGO_ENABLED=0`.
