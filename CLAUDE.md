@@ -85,15 +85,38 @@ go test ./core/...   # Run core package tests only
 go test -run TestFoo # Run specific test
 ```
 
-Cross-platform builds: `make build-linux`, `make build-mac`, `make build-windows`
+## Release Process
+
+This project uses **goreleaser** for automated cross-platform releases:
+
+```bash
+# Test release build (does not publish)
+make release-snapshot
+# or: goreleaser release --snapshot --clean
+
+# Official release (requires git tag and GITHUB_TOKEN)
+export GITHUB_TOKEN="ghp_xxx"  # GitHub PAT with repo permissions
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+make release
+# or: goreleaser release
+```
+
+**Version information** is injected via ldflags during goreleaser builds:
+- `main.version` - Version string from git tag
+- `main.commit` - Git commit SHA
+- `main.date` - Build timestamp
+
+Access via `taskctl version` command.
 
 ## Technology Constraints
 
-- **SQLite**: MUST use `github.com/glebarez/sqlite` (pure Go, no CGO) to enable easy cross-compilation
+- **SQLite**: MUST use `github.com/glebarez/sqlite` (pure Go, no CGO) to enable easy cross-compilation. Goreleaser builds set `CGO_ENABLED=0`.
 - **CLI**: `taskctl ps` MUST support `--json` flag for AI agent compatibility
 - **Web API**: All API routes are prefixed with `/api/v1/`
 - **Database location**: Configurable via `--db` flag (default: `./taskctl.db`)
 - **Status changes**: MUST use `ChangeProcessState()` (transactional) instead of `SetProcessStatus()` for consistency
+- **Version info**: Build-time variables (`main.version`, `main.commit`, `main.date`) are injected via goreleaser ldflags
 
 ## Frontend Architecture
 
@@ -227,6 +250,9 @@ Advanced Features (in `core/advanced.go`):
 - `ProcessExport` - Complete process data for Markdown export
 
 ## CLI Commands
+
+Utility:
+- `taskctl version` - Print version, commit, and build date information
 
 Process Management:
 - `taskctl spawn <title>` - Create new process
