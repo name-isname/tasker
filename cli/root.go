@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"taskctl/core"
@@ -10,6 +11,11 @@ import (
 var (
 	jsonOutput bool
 	localDB    bool
+
+	// Version information injected by goreleaser
+	Version   = "dev"
+	Commit    = "none"
+	BuildDate = "unknown"
 )
 
 // Command groups for better organization
@@ -94,7 +100,11 @@ rather than simple todo items. Every state change and progress note is recorded 
 }
 
 // Execute runs the root command
-func Execute() {
+func Execute(version, commit, date string) {
+	Version = version
+	Commit = commit
+	BuildDate = date
+
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
@@ -130,6 +140,18 @@ func init() {
 		ID:    GroupUI,
 		Title: "Interface & Export",
 	})
+
+	// Add version command
+	versionCmd := &cobra.Command{
+		Use:   "version",
+		Short: "Print version information",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Printf("taskctl version %s\n", Version)
+			fmt.Printf("commit: %s\n", Commit)
+			fmt.Printf("built at: %s\n", BuildDate)
+		},
+	}
+	rootCmd.AddCommand(versionCmd)
 
 	// Add custom help flag that works with -h
 	rootCmd.SetHelpCommand(&cobra.Command{

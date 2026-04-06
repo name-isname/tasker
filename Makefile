@@ -36,13 +36,9 @@ run:
 install-frontend:
 	cd web/frontend && npm install
 
-# Cross-platform build targets
-build-linux:
-	GOOS=linux GOARCH=amd64 go build -o taskctl-linux-amd64 .
+# Goreleaser targets
+release-snapshot:
+	goreleaser release --snapshot --clean
 
-build-mac:
-	GOOS=darwin GOARCH=amd64 go build -o taskctl-darwin-amd64 .
-	GOOS=darwin GOARCH=arm64 go build -o taskctl-darwin-arm64 .
-
-build-windows:
-	GOOS=windows GOARCH=amd64 go build -o taskctl-windows-amd64.exe .
+release:
+	goreleaser release
