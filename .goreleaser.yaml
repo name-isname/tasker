@@ -49,19 +49,19 @@ changelog:
       - "^test:"
       - "^chore:"
 
-brews:
+homebrew_casks:
   - name: taskctl
     homepage: https://github.com/name-isname/tasker
+    description: "Process-oriented task management system"
+    license: MIT
+    binaries:
+      - taskctl
     repository:
       owner: name-isname
       name: homebrew-taskctl
       branch: main
-    description: "Process-oriented task management system"
-    license: MIT
-    install: |
-      bin.install "taskctl"
-    test: |
-      system "#{bin}/taskctl", "version"
+    directory: Casks
+    commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
 
 release:
   github:
