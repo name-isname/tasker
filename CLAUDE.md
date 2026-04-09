@@ -87,57 +87,78 @@ go test -run TestFoo # Run specific test
 
 ## Release Process
 
-This project uses **goreleaser** for automated cross-platform releases:
+This project uses **goreleaser** for automated cross-platform releases.
+
+### Pre-release Checklist
+
+1. **Ensure all changes are committed** - goreleaser requires a clean git state
+2. **Run tests** - Verify all tests pass: `go test ./...`
+3. **Update version** - Decide on new version number (semantic versioning)
+
+### Release Steps
 
 ```bash
-# Test release build (does not publish)
-make release-snapshot
-# or: goreleaser release --snapshot --clean
+# 1. Test release build (does not publish, validates configuration)
+goreleaser release --snapshot --clean
 
-# Official release (requires git tag and GITHUB_TOKEN)
+# 2. Clean snapshot artifacts
+rm -rf dist/
+
+# 3. Create and push git tag
+git tag -a v0.2.0 -m "Release v0.2.0: description of changes"
+git push origin main        # Push commits first
+git push origin v0.2.0      # Then push the tag
+
+# 4. Execute official release (requires GITHUB_TOKEN)
 export GITHUB_TOKEN="ghp_xxx"  # GitHub PAT with repo permissions
-git tag -a v1.0.0 -m "Release v1.0.0"
-git push origin v1.0.0
-make release
-# or: goreleaser release
+goreleaser release
 ```
 
-**Version information** is injected via ldflags during goreleaser builds:
-- `main.version` - Version string from git tag
+**Important**:
+- Push commits BEFORE pushing the tag
+- goreleaser will fail if git state is dirty (uncommitted changes)
+- GITHUB_TOKEN must have `repo` scope permissions
+
+### What Goreleaser Does
+
+1. **Builds binaries** for:
+   - macOS (amd64, arm64)
+   - Linux (amd64, arm64)
+   - Windows (amd64)
+
+2. **Creates GitHub Release** with:
+   - All build artifacts as downloadable files
+   - checksums.txt with SHA256 hashes
+   - Auto-generated changelog
+
+3. **Updates Homebrew formula** in `name-isname/homebrew-taskctl`
+
+### Version Information
+
+Version info is injected via ldflags during goreleaser builds:
+- `main.version` - Version string from git tag (e.g., "v0.2.0")
 - `main.commit` - Git commit SHA
 - `main.date` - Build timestamp
 
-Access via `taskctl version` command.
+Access via: `taskctl version`
 
-## Homebrew Distribution
+### Homebrew Distribution
 
-The project is distributed via Homebrew tap at `name-isname/homebrew-taskctl`:
+The project is automatically distributed via Homebrew tap at `name-isname/homebrew-taskctl`.
 
 **Installation**:
 ```bash
 brew install name-isname/taskctl/taskctl
 ```
 
-**Tap location**: `/opt/homebrew/Library/Taps/name-isname/homebrew-taskctl/Formula/taskctl.rb`
-
-**Updating Formula after release**:
+**Upgrade after release**:
 ```bash
-cd /opt/homebrew/Library/Taps/name-isname/homebrew-taskctl
-
-# Download new release and get SHA256 checksums
-curl -sL https://github.com/name-isname/tasker/releases/download/vX.X.X/taskctl_X.X.X_darwin_arm64.tar.gz | shasum -a 256
-# Repeat for each platform...
-
-# Edit Formula/taskctl.rb:
-# - Update tag: "vX.X.X"
-# - Update revision: "<new commit SHA>"
-# - Update all URLs with new version
-# - Update all sha256 values
-
-git add Formula/
-git commit -m "Update taskctl to vX.X.X"
-git push
+brew upgrade name-isname/taskctl/taskctl
 ```
+
+**Formula location**: `/opt/homebrew/Library/Taps/name-isname/homebrew-taskctl/Formula/taskctl.rb`
+
+The formula is **automatically updated** by goreleaser during release. Manual updates are only needed if goreleaser fails to push to the homebrew tap.
 
 **Formula supports**: macOS ARM64/AMD64, Linux ARM64/AMD64
 
