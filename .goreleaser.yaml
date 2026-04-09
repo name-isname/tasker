@@ -62,6 +62,12 @@ homebrew_casks:
       branch: main
     directory: Casks
     commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/taskctl"]
+          end
 
 release:
   github:
