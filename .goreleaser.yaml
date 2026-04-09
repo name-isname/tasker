@@ -49,6 +49,20 @@ changelog:
       - "^test:"
       - "^chore:"
 
+brews:
+  - name: taskctl
+    homepage: https://github.com/name-isname/tasker
+    repository:
+      owner: name-isname
+      name: homebrew-taskctl
+    description: "Process-oriented task management system"
+    license: MIT
+    skip_upload: auto
+    install: |
+      bin.install "taskctl"
+    test: |
+      system "#{bin}/taskctl", "version"
+
 release:
   github:
     owner: name-isname
