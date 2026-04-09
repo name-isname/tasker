@@ -55,9 +55,14 @@ brews:
     repository:
       owner: name-isname
       name: homebrew-taskctl
+      branch: main
     description: "Process-oriented task management system"
     license: MIT
     skip_upload: auto
+    commit_author:
+      name: goreleaser-bot
+      email: bot@goreleaser.com
+    commit_msg_template: "Update taskctl to {{ .Version }}"
     install: |
       bin.install "taskctl"
     test: |
