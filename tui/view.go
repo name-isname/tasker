@@ -593,7 +593,28 @@ func (m Model) spawnView() string {
 	if m.spawnFocusedField == 2 {
 		priorityLabel = cursorStyle.Render(priorityLabel)
 	}
-	b.WriteString(priorityLabel + " " + m.spawnPriority.View() + " (H/M/L)\n\n")
+
+	// Get current priority display
+	var priorityDisplay string
+	var priorityStyle lipgloss.Style
+	switch m.spawnPriority {
+	case 2:
+		priorityDisplay = "H (高)"
+		priorityStyle = priorityHighStyle
+	case 0:
+		priorityDisplay = "L (低)"
+		priorityStyle = priorityLowStyle
+	default:
+		priorityDisplay = "M (中)"
+		priorityStyle = priorityMediumStyle
+	}
+
+	// Show arrow indicators when focused on priority field
+	if m.spawnFocusedField == 2 {
+		b.WriteString(priorityLabel + " ◀ " + priorityStyle.Render(priorityDisplay) + " ▷\n\n")
+	} else {
+		b.WriteString(priorityLabel + " " + priorityStyle.Render(priorityDisplay) + "\n\n")
+	}
 
 	// Parent field
 	parentLabel := "父进程:"
@@ -618,7 +639,7 @@ func (m Model) spawnView() string {
 	if m.editingProcessID > 0 {
 		action = "保存"
 	}
-	b.WriteString(helpStyle.Render(fmt.Sprintf(" tab:切换字段  Ctrl+J:%s (macOS)  esc:取消", action)))
+	b.WriteString(helpStyle.Render(fmt.Sprintf(" tab:切换字段  ←→:切换优先级  Ctrl+J:%s (macOS)  esc:取消", action)))
 
 	return b.String()
 }

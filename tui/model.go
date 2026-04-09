@@ -63,8 +63,8 @@ type Model struct {
 	// Spawn/Edit form fields (shared between spawn and edit)
 	spawnTitle        textinput.Model
 	spawnDesc         textarea.Model
-	spawnPriority     textinput.Model
-	spawnFocusedField int  // 0=title, 1=desc, 2=priority, 3=parent
+	spawnPriority     int // 0=low, 1=medium, 2=high
+	spawnFocusedField int // 0=title, 1=desc, 2=priority, 3=parent
 	editingProcessID  uint // 0 for new process, >0 for editing existing process
 
 	// Parent process selection
@@ -148,10 +148,6 @@ func InitialModel() Model {
 	descInput := textarea.New()
 	descInput.Placeholder = "描述（可选，支持多行）..."
 
-	priorityInput := textinput.New()
-	priorityInput.Placeholder = "M"
-	priorityInput.SetValue("M")
-
 	return Model{
 		viewMode:          ViewList,
 		processes:         []core.Process{},
@@ -160,7 +156,7 @@ func InitialModel() Model {
 		textInput:         ti,
 		spawnTitle:        titleInput,
 		spawnDesc:         descInput,
-		spawnPriority:     priorityInput,
+		spawnPriority:     1, // Default to medium (1=medium)
 		spawnFocusedField: 0,
 		treeExpanded:      make(map[uint]bool),
 		statsDays:         30,

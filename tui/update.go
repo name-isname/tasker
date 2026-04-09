@@ -234,7 +234,7 @@ func (m Model) handleListKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Show spawn dialog
 		m.spawnTitle.Reset()
 		m.spawnDesc.Reset()
-		m.spawnPriority.SetValue("M")
+		m.spawnPriority = 1 // Default to medium (1=medium)
 		m.spawnFocusedField = 0
 		m.spawnTitle.Focus()
 		m.editingProcessID = 0 // Ensure we're in create mode
@@ -435,8 +435,15 @@ func (m Model) handleDetailKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.spawnTitle.SetValue(m.currentProcess.Title)
 			m.spawnDesc.Reset()
 			m.spawnDesc.SetValue(m.currentProcess.Description)
-			m.spawnPriority.Reset()
-			m.spawnPriority.SetValue(string(m.currentProcess.Priority))
+			// Convert priority to index (0=low, 1=medium, 2=high)
+			switch m.currentProcess.Priority {
+			case core.PriorityHigh:
+				m.spawnPriority = 2
+			case core.PriorityLow:
+				m.spawnPriority = 0
+			default:
+				m.spawnPriority = 1
+			}
 			m.spawnFocusedField = 0
 			m.spawnTitle.Focus()
 			m.editingProcessID = m.currentProcess.ID
@@ -716,19 +723,15 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case 0:
 			m.spawnTitle.Focus()
 			m.spawnDesc.Blur()
-			m.spawnPriority.Blur()
 		case 1:
 			m.spawnTitle.Blur()
 			m.spawnDesc.Focus()
-			m.spawnPriority.Blur()
 		case 2:
 			m.spawnTitle.Blur()
 			m.spawnDesc.Blur()
-			m.spawnPriority.Focus()
 		case 3:
 			m.spawnTitle.Blur()
 			m.spawnDesc.Blur()
-			m.spawnPriority.Blur()
 		}
 		return m, nil
 
@@ -739,23 +742,37 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case 0:
 			m.spawnTitle.Focus()
 			m.spawnDesc.Blur()
-			m.spawnPriority.Blur()
 		case 1:
 			m.spawnTitle.Blur()
 			m.spawnDesc.Focus()
-			m.spawnPriority.Blur()
 		case 2:
 			m.spawnTitle.Blur()
 			m.spawnDesc.Blur()
-			m.spawnPriority.Focus()
 		case 3:
 			m.spawnTitle.Blur()
 			m.spawnDesc.Blur()
-			m.spawnPriority.Blur()
 		}
 		return m, nil
 
 	default:
+		// Handle left/h and right/l for priority field
+		if m.spawnFocusedField == 2 {
+			switch msg.String() {
+			case "left", "h":
+				// Decrease priority
+				if m.spawnPriority > 0 {
+					m.spawnPriority--
+				}
+				return m, nil
+			case "right", "l":
+				// Increase priority
+				if m.spawnPriority < 2 {
+					m.spawnPriority++
+				}
+				return m, nil
+			}
+		}
+
 		// Update the focused field
 		var cmd tea.Cmd
 		switch m.spawnFocusedField {
@@ -764,7 +781,7 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case 1:
 			m.spawnDesc, cmd = m.spawnDesc.Update(msg)
 		case 2:
-			m.spawnPriority, cmd = m.spawnPriority.Update(msg)
+			// Priority field uses arrow keys, no text input update needed
 		case 3:
 			// Parent field is read-only (no text input)
 		}
@@ -776,17 +793,17 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) submitSpawnForm() (tea.Model, tea.Cmd) {
 	title := m.spawnTitle.Value()
 	desc := m.spawnDesc.Value()
-	priorityStr := m.spawnPriority.Value()
 
 	if title == "" {
 		return m, nil
 	}
 
+	// Convert priority index to ProcessPriority (0=low, 1=medium, 2=high)
 	var priority core.ProcessPriority
-	switch priorityStr {
-	case "H", "h":
+	switch m.spawnPriority {
+	case 2:
 		priority = core.PriorityHigh
-	case "L", "l":
+	case 0:
 		priority = core.PriorityLow
 	default:
 		priority = core.PriorityMedium
