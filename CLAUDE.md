@@ -112,12 +112,16 @@ git push origin v0.2.0      # Then push the tag
 # 4. Execute official release (requires GITHUB_TOKEN)
 export GITHUB_TOKEN="ghp_xxx"  # GitHub PAT with repo permissions
 goreleaser release
+
+# 5. Manually update Homebrew formula (goreleaser v2 has directory issues)
+./scripts/update-homebrew.sh v0.2.0
 ```
 
 **Important**:
 - Push commits BEFORE pushing the tag
 - goreleaser will fail if git state is dirty (uncommitted changes)
 - GITHUB_TOKEN must have `repo` scope permissions
+- Homebrew formula MUST be manually updated after release (see below)
 
 ### What Goreleaser Does
 
@@ -131,7 +135,9 @@ goreleaser release
    - checksums.txt with SHA256 hashes
    - Auto-generated changelog
 
-3. **Updates Homebrew formula** in `name-isname/homebrew-taskctl`
+3. **Generates Homebrew formula** locally in `dist/homebrew/taskctl.rb`
+   - Note: goreleaser v2 has issues pushing to correct directory
+   - Use the provided script to manually update the formula
 
 ### Version Information
 
@@ -144,7 +150,7 @@ Access via: `taskctl version`
 
 ### Homebrew Distribution
 
-The project is automatically distributed via Homebrew tap at `name-isname/homebrew-taskctl`.
+The project is distributed via Homebrew tap at `name-isname/homebrew-taskctl`.
 
 **Installation**:
 ```bash
@@ -158,7 +164,30 @@ brew upgrade name-isname/taskctl/taskctl
 
 **Formula location**: `/opt/homebrew/Library/Taps/name-isname/homebrew-taskctl/Formula/taskctl.rb`
 
-The formula is **automatically updated** by goreleaser during release. Manual updates are only needed if goreleaser fails to push to the homebrew tap.
+**Manual Formula Update** (after goreleaser release):
+```bash
+# Use the provided script to update homebrew formula
+./scripts/update-homebrew.sh v0.2.0
+
+# Or manually update:
+# 1. Get checksums from the release
+curl -sL https://github.com/name-isname/tasker/releases/download/v0.2.0/tasker_0.2.0_darwin_arm64.tar.gz | shasum -a 256
+# (repeat for each platform)
+
+# 2. Clone and update the tap
+cd /tmp
+git clone https://github.com/name-isname/homebrew-taskctl.git
+cd homebrew-taskctl
+
+# 3. Edit Formula/taskctl.rb with new version, URLs, and checksums
+
+# 4. Commit and push
+git add Formula/taskctl.rb
+git commit -m "Update taskctl to v0.2.0"
+git push
+```
+
+**Why manual update?** goreleaser v2 has a known issue where it pushes formula to the repository root (`/taskctl.rb`) instead of the correct `Formula/` directory. The provided script handles this correctly.
 
 **Formula supports**: macOS ARM64/AMD64, Linux ARM64/AMD64
 

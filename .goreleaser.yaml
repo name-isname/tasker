@@ -50,9 +50,8 @@ changelog:
       - "^chore:"
 
 brews:
-  # NOTE: goreleaser v2 may push formula to wrong directory (root instead of Formula/)
-  # After release, check and remove taskctl.rb from root if it exists
-  # Issue tracked: https://github.com/goreleaser/goreleaser/issues/...
+  # Generate formula but skip auto-push due to goreleaser v2 directory issue
+  # After release: manually update formula using generated dist/homebrew/taskctl.rb
   - name: taskctl
     homepage: https://github.com/name-isname/tasker
     repository:
@@ -61,11 +60,7 @@ brews:
       branch: main
     description: "Process-oriented task management system"
     license: MIT
-    skip_upload: auto
-    commit_author:
-      name: goreleaser-bot
-      email: bot@goreleaser.com
-    commit_msg_template: "Update taskctl to {{ .Version }}"
+    skip_upload: true
     install: |
       bin.install "taskctl"
     test: |
