@@ -50,6 +50,9 @@ changelog:
       - "^chore:"
 
 brews:
+  # NOTE: goreleaser v2 may push formula to wrong directory (root instead of Formula/)
+  # After release, check and remove taskctl.rb from root if it exists
+  # Issue tracked: https://github.com/goreleaser/goreleaser/issues/...
   - name: taskctl
     homepage: https://github.com/name-isname/tasker
     repository:
