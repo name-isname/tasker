@@ -45,3 +45,5 @@ debug
 *.log
 
 pat.toml
+
+_output/
