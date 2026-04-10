@@ -834,6 +834,7 @@ func (m Model) submitSpawnForm() (tea.Model, tea.Cmd) {
 	}
 
 	// Create new process
+	m.viewMode = ViewList // Return to list view after creation
 	return m, func() tea.Msg {
 		_, err := core.CreateProcess(title, desc, m.selectedParentID, priority)
 		if err != nil {

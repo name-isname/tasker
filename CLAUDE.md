@@ -79,6 +79,8 @@ make dev             # Start Vite dev server on :5173
 make clean           # Remove build artifacts
 make install-frontend # Install npm dependencies
 make run             # Run CLI directly without building
+make release-snapshot # Test goreleaser release (does not publish)
+make release         # Execute goreleaser release (requires GITHUB_TOKEN)
 ./taskctl            # Run the built binary
 go test ./...        # Run all tests
 go test ./core/...   # Run core package tests only
@@ -190,6 +192,10 @@ git push
 **Why manual update?** goreleaser v2 has a known issue where it pushes cask to the repository root (`/taskctl.rb`) instead of the correct `Casks/` directory. The provided script handles this correctly.
 
 **Cask supports**: macOS ARM64/AMD64, Linux ARM64/AMD64
+
+**macOS Quarantine Removal**: The goreleaser config includes a post-install hook (`homebrew_casks.hooks.post.install`) that automatically removes the macOS quarantine attribute from the downloaded binary using `/usr/bin/xattr -dr com.apple.quarantine`. This prevents macOS from showing the "unidentified developer" warning on first run.
+
+**Changelog Generation**: goreleaser auto-generates release notes from commits, excluding `docs:`, `test:`, and `chore:` prefixes. Only `feat:`, `fix:`, and `refactor:` commits appear in the GitHub release notes.
 
 ## Technology Constraints
 
