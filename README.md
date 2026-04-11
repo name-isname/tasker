@@ -82,8 +82,8 @@ make build-windows  # Windows AMD64
 # List all tasks
 ./taskctl list
 
-# List tasks as JSON (for AI agents)
-./taskctl list --json
+# List tasks as XML (for AI agents)
+./taskctl list --xml
 
 # Mark task as completed
 ./taskctl complete 1
@@ -158,7 +158,7 @@ taskctl/
 ├── cli/                 # CLI commands (Cobra)
 │   ├── root.go         # Root command
 │   ├── add.go          # Add task
-│   ├── list.go         # List tasks (with --json)
+│   ├── list.go         # List tasks (with --xml)
 │   ├── complete.go     # Complete task
 │   ├── delete.go       # Delete task
 │   ├── tui.go          # TUI entry

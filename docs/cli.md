@@ -18,13 +18,13 @@ This document defines the Command Line Interface (CLI) for `taskctl`.
 The CLI follows a Unix-like process management metaphor. It is built using `github.com/spf13/cobra`.
 
 **Crucial Rules for AI Agent (Claude Code):**
-1. **JSON Output (`--json`)**: Every command that outputs data MUST support a `--json` flag.
+1. **XML Output (`--xml`)**: Every command that outputs data MUST support a `--xml` flag.
 2. **Exit Codes**: Always exit with `0` on success and non-zero (e.g., `1`) on failure.
 3. **Core Delegation**: The CLI layer must contain NO business logic or raw SQL. It must call methods from `core.ProcessManager`.
 
 ## 2. Global Flags
 - `--db string`: Path to the SQLite database file (default: `~/.taskctl/data.db`).
-- `--json`: Output result in raw JSON format.
+- `--xml`: Output result in LLM-optimized XML format.
 
 ---
 

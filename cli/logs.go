@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -28,9 +27,8 @@ var logsCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
-			data, _ := json.MarshalIndent(logEntries, "", "  ")
-			fmt.Println(string(data))
+		if xmlOutput {
+			fmt.Println(formatLogsAsXML(logEntries))
 			return nil
 		}
 

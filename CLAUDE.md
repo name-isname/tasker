@@ -200,7 +200,7 @@ git push
 ## Technology Constraints
 
 - **SQLite**: MUST use `github.com/glebarez/sqlite` (pure Go, no CGO) to enable easy cross-compilation. Goreleaser builds set `CGO_ENABLED=0`.
-- **CLI**: `taskctl ps` MUST support `--json` flag for AI agent compatibility
+- **CLI**: `taskctl ps` MUST support `--xml` flag for AI agent compatibility
 - **Web API**: All API routes are prefixed with `/api/v1/`
 - **Database location**: Configurable via `--db` flag (default: `./taskctl.db`)
 - **Status changes**: MUST use `ChangeProcessState()` (transactional) instead of `SetProcessStatus()` for consistency
@@ -344,7 +344,7 @@ Utility:
 
 Process Management:
 - `taskctl spawn <title>` - Create new process
-- `taskctl ps` - List processes (--json for AI)
+- `taskctl ps` - List processes (--xml for AI)
 - `taskctl inspect <id>` - Show process details
 - `taskctl update <id>` - Edit process
 - `taskctl kill <id>` - Delete process

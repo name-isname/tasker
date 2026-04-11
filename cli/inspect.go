@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -23,8 +22,8 @@ Similar to 'docker inspect' for containers.`,
 	Example: `  # Inspect a process
   taskctl inspect 1
 
-  # Get process details as JSON
-  taskctl inspect 1 --json`,
+  # Get process details as XML
+  taskctl inspect 1 --xml`,
 
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -38,9 +37,8 @@ Similar to 'docker inspect' for containers.`,
 			return err
 		}
 
-		if jsonOutput {
-			data, _ := json.MarshalIndent(process, "", "  ")
-			fmt.Println(string(data))
+		if xmlOutput {
+			fmt.Println(formatProcessDetailAsXML(process))
 			return nil
 		}
 

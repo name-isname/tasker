@@ -210,7 +210,7 @@ func getFlagSummary(cmd *cobra.Command) string {
 	var flags []string
 	cmd.LocalFlags().VisitAll(func(f *pflag.Flag) {
 		// Skip deprecated or hidden flags
-		if !f.Hidden && f.Name != "db" && f.Name != "local" && f.Name != "json" {
+		if !f.Hidden && f.Name != "db" && f.Name != "local" && f.Name != "xml" {
 			shorthand := ""
 			if f.Shorthand != "" {
 				shorthand = "-" + f.Shorthand + ", "
@@ -282,12 +282,12 @@ func generateUsageExamples() string {
 		"├── Implement REST API\n" +
 		"└── Build React frontend\n" +
 		"```\n\n" +
-		"### Example 3: AI Integration with JSON Output\n\n" +
+		"### Example 3: AI Integration with XML Output\n\n" +
 		"```bash\n" +
-		"# Get processes as JSON for programmatic parsing\n" +
-		"taskctl ps --json\n\n" +
+		"# Get processes as XML for programmatic parsing\n" +
+		"taskctl ps --xml\n\n" +
 		"# Get single process with full details\n" +
-		"taskctl inspect 1 --json\n\n" +
+		"taskctl inspect 1 --xml\n\n" +
 		"# Search across all processes and logs\n" +
 		"taskctl grep \"database\"\n\n" +
 		"# View activity timeline\n" +
@@ -295,13 +295,17 @@ func generateUsageExamples() string {
 		"# Get statistics for the past 7 days\n" +
 		"taskctl stats 7\n" +
 		"```\n\n" +
-		"**JSON Output:**\n" +
-		"```json\n" +
-		"[\n" +
-		"  {\"id\": 1, \"title\": \"Build web app\", \"status\": \"running\", \"priority\": \"medium\"}\n" +
-		"]\n" +
-		"```\n\n" +
-		"### Example 4: Using the TUI and Web UI\n\n" +
+			"```xml\n" +
+			"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+			"<process_list>\n" +
+			"<process id=\"1\" parent_id=\"null\">\n" +
+			"  <name><![CDATA[Build web app]]></name>\n" +
+			"  <state>running</state>\n" +
+			"  <importance>medium</importance>\n" +
+			"</process>\n" +
+			"</process_list>\n" +
+			"```\n\n" +
+			"### Example 4: Using the TUI and Web UI\n\n" +
 		"```bash\n" +
 		"# Launch the terminal UI (recommended for interactive use)\n" +
 		"taskctl tui\n\n" +
@@ -333,7 +337,7 @@ func generateBestPractices() string {
 		"These create automatic state_change logs for audit trail.\n\n" +
 		"### Writing Effective Progress Logs\n\n" +
 		"**Good logs:**\n" +
-		"- \"Decided to use PostgreSQL instead of MySQL for JSON support\"\n" +
+		"- \"Decided to use PostgreSQL instead of MySQL for XML support\"\n" +
 		"- \"API returns 500 on /users endpoint when email contains '+'\"\n" +
 		"- \"Blocked by https://github.com/user/repo/issues/123\"\n\n" +
 		"**Poor logs:**\n" +
@@ -354,15 +358,15 @@ func generateBestPractices() string {
 
 func generateAIFeatures() string {
 	return "## AI-Specific Features\n\n" +
-		"### JSON Output Mode\n\n" +
-		"All commands support the `--json` flag for structured output:\n\n" +
+		"### XML Output Mode\n\n" +
+		"All commands support the `--xml` flag for structured output:\n\n" +
 		"```bash\n" +
-		"taskctl ps --json        # Array of all processes\n" +
-		"taskctl inspect 1 --json # Single process with logs\n" +
+		"taskctl ps --xml        # Array of all processes\n" +
+		"taskctl inspect 1 --xml # Single process with logs\n" +
 		"```\n\n" +
 		"**Use when:** Parsing output programmatically, integrating with other tools, " +
 		"or when AI needs to process the data.\n\n" +
-		"**JSON Structure:**\n" +
+		"**XML Structure:**\n" +
 		"- Process: `{id, title, description, status, priority, ranking, created_at, updated_at, parent_id}`\n" +
 		"- Log: `{id, process_id, log_type, content, created_at}`\n\n" +
 		"### Database Management\n\n" +

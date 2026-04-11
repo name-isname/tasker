@@ -82,8 +82,8 @@ make build-windows  # Windows AMD64
 # 列出所有任务
 ./taskctl list
 
-# 以 JSON 格式输出（供 AI 代理使用）
-./taskctl list --json
+# 以 XML 格式输出（供 AI 代理使用）
+./taskctl list --xml
 
 # 标记任务为完成
 ./taskctl complete 1
@@ -158,7 +158,7 @@ taskctl/
 ├── cli/                 # CLI 命令（Cobra）
 │   ├── root.go         # 根命令
 │   ├── add.go          # 添加任务
-│   ├── list.go         # 列出任务（支持 --json）
+│   ├── list.go         # 列出任务（支持 --xml）
 │   ├── complete.go     # 完成任务
 │   ├── delete.go       # 删除任务
 │   ├── tui.go          # TUI 入口
@@ -183,7 +183,7 @@ taskctl/
 
 1. **核心库优先**：`core/` 包包含所有业务逻辑和数据访问。表现层只负责用户交互。
 2. **纯 Go SQLite**：使用 `glebarez/sqlite` 而非 `mattn/go-sqlite3`，避免 CGO 依赖，便于交叉编译。
-3. **AI 友好**：CLI 支持 `--json` 标志，便于 AI 代理解析。
+3. **AI 友好**：CLI 支持 `--xml` 标志，便于 AI 代理解析。
 4. **单二进制分发**：前端资源通过 `//go:embed` 嵌入到 Go 二进制文件中。
 
 ## 许可证

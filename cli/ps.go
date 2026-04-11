@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"taskctl/core"
 	"github.com/spf13/cobra"
@@ -39,8 +38,8 @@ Priority icons:
   # Show only blocked processes
   taskctl ps -s blocked
 
-  # Output as JSON for AI agents
-  taskctl ps --json`,
+  # Output as XML for AI agents
+  taskctl ps --xml`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Tree mode
@@ -65,12 +64,8 @@ Priority icons:
 			return err
 		}
 
-		if jsonOutput {
-			data, err := json.Marshal(processes)
-			if err != nil {
-				return err
-			}
-			fmt.Println(string(data))
+		if xmlOutput {
+			fmt.Println(formatProcessListAsXML(processes))
 			return nil
 		}
 

@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	jsonOutput bool
+	xmlOutput bool
 	localDB    bool
 
 	// Version information injected by goreleaser
@@ -64,8 +64,8 @@ rather than simple todo items. Every state change and progress note is recorded 
   # Export as Markdown
   taskctl export 1
 
-  # Output as JSON (for AI agents)
-  taskctl ps --json`,
+  # Output as XML (for AI agents)
+  taskctl ps --xml`,
 
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Skip DB init for help command
@@ -113,7 +113,7 @@ func Execute(version, commit, date string) {
 func init() {
 	rootCmd.PersistentFlags().StringP("db", "d", "./taskctl.db", "Path to the SQLite database")
 	rootCmd.PersistentFlags().BoolVarP(&localDB, "local", "L", false, "Use local database in current directory")
-	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
+	rootCmd.PersistentFlags().BoolVar(&xmlOutput, "xml", false, "Output as LLM-optimized XML")
 
 	// Set up command groups for better organization
 	rootCmd.AddGroup(&cobra.Group{
