@@ -47,3 +47,6 @@ debug
 pat.toml
 
 _output/
+
+# Claude Code
+.claude/
