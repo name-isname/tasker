@@ -99,8 +99,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewMode = ViewList
 		m.currentProcess = nil
 		m.processLogs = nil
-		// Refresh process list when returning to list view
-		return m, refreshProcesses()
+		// Refresh process list when returning to list view (maintain current filter)
+		return m, refreshProcessesWithFilter(m.statusFilter)
 
 	case errMsg:
 		m.err = msg
@@ -633,7 +633,7 @@ func (m Model) handleInputKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Cancel input - return to previous view
 		if m.inputPrompt == "Search" {
 			m.viewMode = ViewList
-			return m, refreshProcesses()
+			return m, refreshProcessesWithFilter(m.statusFilter)
 		} else {
 			m.viewMode = ViewDetail
 		}
@@ -693,7 +693,7 @@ func (m Model) handleSpawnKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		// Was creating new, return to list view
 		m.viewMode = ViewList
-		return m, refreshProcesses()
+		return m, refreshProcessesWithFilter(m.statusFilter)
 
 	case "ctrl+enter", "ctrl+j":
 		// Ctrl+Enter or Ctrl+J (macOS compatible) submits the form
@@ -835,13 +835,19 @@ func (m Model) submitSpawnForm() (tea.Model, tea.Cmd) {
 
 	// Create new process
 	m.viewMode = ViewList // Return to list view after creation
+	currentFilter := m.statusFilter
 	return m, func() tea.Msg {
 		_, err := core.CreateProcess(title, desc, m.selectedParentID, priority)
 		if err != nil {
 			return errMsg{err}
 		}
-		// Refresh processes
-		processes, err := core.ListProcesses(nil)
+		// Refresh processes with current filter
+		var processes []core.Process
+		if currentFilter == "" {
+			processes, err = core.ListProcesses(nil)
+		} else {
+			processes, err = core.ListProcesses(&currentFilter)
+		}
 		if err != nil {
 			return errMsg{err}
 		}
@@ -854,7 +860,7 @@ func (m Model) handleSearchKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q", "esc":
 		// Return to list
 		m.viewMode = ViewList
-		return m, refreshProcesses()
+		return m, refreshProcessesWithFilter(m.statusFilter)
 
 	case "ctrl+c":
 		m.quitting = true
@@ -904,7 +910,7 @@ func (m Model) handleTimelineKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q", "esc":
 		// Return to list
 		m.viewMode = ViewList
-		return m, refreshProcesses()
+		return m, refreshProcessesWithFilter(m.statusFilter)
 
 	case "ctrl+c":
 		m.quitting = true
@@ -939,7 +945,7 @@ func (m Model) handleStatsKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q", "esc":
 		// Return to list
 		m.viewMode = ViewList
-		return m, refreshProcesses()
+		return m, refreshProcessesWithFilter(m.statusFilter)
 
 	case "ctrl+c":
 		m.quitting = true
@@ -969,7 +975,7 @@ func (m Model) handleTreeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q", "esc":
 		// Return to list
 		m.viewMode = ViewList
-		return m, refreshProcesses()
+		return m, refreshProcessesWithFilter(m.statusFilter)
 
 	case "ctrl+c":
 		m.quitting = true
@@ -1225,7 +1231,7 @@ func (m Model) handleDeleteConfirmKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.confirmDeleteType = ""
 			m.confirmDeleteID = 0
 			m.confirmDeleteName = ""
-			return m, refreshProcesses()
+			return m, refreshProcessesWithFilter(m.statusFilter)
 		} else {
 			m.viewMode = ViewDetail
 		}

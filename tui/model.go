@@ -152,7 +152,7 @@ func InitialModel() Model {
 		viewMode:          ViewList,
 		processes:         []core.Process{},
 		selectedIdx:       0,
-		statusFilter:      "", // Show all by default
+		statusFilter:      core.StatusRunning, // Show running by default
 		textInput:         ti,
 		spawnTitle:        titleInput,
 		spawnDesc:         descInput,
