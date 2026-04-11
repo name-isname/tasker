@@ -359,16 +359,28 @@ func generateBestPractices() string {
 func generateAIFeatures() string {
 	return "## AI-Specific Features\n\n" +
 		"### XML Output Mode\n\n" +
-		"All commands support the `--xml` flag for structured output:\n\n" +
+		"All commands support the `--xml` flag for LLM-optimized structured output:\n\n" +
 		"```bash\n" +
-		"taskctl ps --xml        # Array of all processes\n" +
-		"taskctl inspect 1 --xml # Single process with logs\n" +
+		"taskctl ps --xml        # All processes with semantic tags\n" +
+		"taskctl inspect 1 --xml # Single process with activity log\n" +
+		"taskctl logs 1 --xml    # Activity log entries only\n" +
 		"```\n\n" +
-		"**Use when:** Parsing output programmatically, integrating with other tools, " +
-		"or when AI needs to process the data.\n\n" +
+		"**Why XML for AI?** The XML format uses semantic element names that map to natural language:\n" +
+		"- `<process>` instead of generic `item`\n" +
+		"- `<name>` instead of `title` for clarity\n" +
+		"- `<state>` instead of `status` for process semantics\n" +
+		"- `<importance>` instead of `priority` for better context\n" +
+		"- `<activity_log>` instead of `logs` for temporal clarity\n" +
+		"- CDATA sections protect user content from XML injection\n\n" +
+		"**For AI Agents:**\n" +
+		"- **Always use `--xml`** when parsing task data programmatically\n" +
+		"- XML's semantic tags improve comprehension and reduce parsing errors\n" +
+		"- Use `taskctl ps --xml` to get complete task context for analysis\n" +
+		"- Use `taskctl inspect 1 --xml` when you need logs with process details\n" +
+		"- The format is stable and designed for LLM consumption\n\n" +
 		"**XML Structure:**\n" +
-		"- Process: `{id, title, description, status, priority, ranking, created_at, updated_at, parent_id}`\n" +
-		"- Log: `{id, process_id, log_type, content, created_at}`\n\n" +
+		"- Process: `<process id=\"N\" parent_id=\"null\"><name>...</name><state>running</state>...</process>`\n" +
+		"- Log Entry: `<entry id=\"N\" type=\"note|state_change\" timestamp=\"...\"><content>...</content></entry>`\n\n" +
 		"### Database Management\n\n" +
 		"- `--db <path>`: Custom database location\n" +
 		"- `--local` / `-L`: Use `./taskctl.db` instead of `~/.taskctl/taskctl.db`\n" +
@@ -409,6 +421,12 @@ func generateAIFeatures() string {
 		"   ```bash\n" +
 		"   taskctl grep database\n" +
 		"   ```\n\n" +
+			"6. **\"Analyze all my tasks and suggest priorities\"**\n" +
+			"   ```bash\n" +
+			"   taskctl ps --xml  # Get structured data for AI analysis\n" +
+			"   ```\n" +
+			"   *Use this when AI needs to analyze task data, find patterns, or provide insights*\n" +
+			"\n" +
 		"### Integration with Claude Code\n\n" +
 		"This skill enables Claude Code to:\n" +
 		"- Create and manage processes on behalf of users\n" +
